@@ -69,8 +69,7 @@ async function calcPrice(priceUsd) {
         }
       }
     );
-    console.log("response", response);
-    
+
     const btcPrice = response.data.data.quote['1'].price;
     return Number(btcPrice.toFixed(8));
   } catch (err) {
@@ -251,115 +250,110 @@ bot.on('text', async (ctx, next) => {
   next();
 });
 
+const adminStates = new Map();
+
+// Обновляем функцию обработки текста
 async function handleAdminText(ctx) {
-  const text = ctx.message.text;
-  const chatId = ctx.message.chat.id;
+    const chatId = ctx.message.chat.id;
+    let currentState = adminStates.get(chatId) || 'Sleep';
 
-  if (chatId !== conf.adminChatId) return;
+    if (chatId !== conf.adminChatId) return;
 
-  switch (Status) {
-    case 'DelProduct': {
-      Status = 'Sleep';
-      try {
-        const rowsDeleted = await knex('my_productsinfo')
-          .where({ product_id: text })
-          .del();
-        await ctx.reply(rowsDeleted > 0 ? 'Товар успешно удален.' : 'Товар не найден.');
-      } catch (err) {
-        console.error('DelProduct error', err);
-        await ctx.reply('Во время удаления произошла ошибка.');
-      }
-      break;
+    switch (currentState) {
+        case 'DelProduct': {
+            adminStates.set(chatId, 'Sleep');
+            try {
+                const rowsDeleted = await knex('my_productsinfo')
+                    .where({ product_id: ctx.message.text })
+                    .del();
+                await ctx.reply(rowsDeleted > 0 ? 'Товар успешно удален.' : 'Товар не найден.');
+            } catch (err) {
+                console.error('DelProduct error', err);
+                await ctx.reply('Во время удаления произошла ошибка.');
+            }
+            break;
+        }
+        case 'AddProduct_N': {
+            adminStates.set(chatId, 'AddProduct_D');
+            Product.Name = ctx.message.text;
+            await ctx.reply('Укажите описание товара:');
+            break;
+        }
+        case 'AddProduct_D': {
+            adminStates.set(chatId, 'AddProduct_P');
+            Product.Description = ctx.message.text;
+            await ctx.reply('Укажите цену товара (в USD):');
+            break;
+        }
+        case 'AddProduct_P': {
+            adminStates.set(chatId, 'Sleep');
+            const price = Number(ctx.message.text);
+            if (!Number.isFinite(price)) {
+                await ctx.reply('Цена должна быть числом. Попробуйте заново: начните с /addproduct.');
+                return;
+            }
+            Product.Price = price;
+            try {
+                await knex('my_productsinfo').insert({
+                    name: Product.Name,
+                    description: Product.Description,
+                    price: Product.Price
+                });
+                await ctx.reply('Товар успешно добавлен.');
+            } catch (err) {
+                console.error('AddProduct_P error', err);
+                await ctx.reply('Во время добавления товара произошла ошибка.');
+            }
+            break;
+        }
+        case 'AddProductData': {
+            adminStates.set(chatId, 'Sleep');
+            const parts = ctx.message.text.split('$');
+            if (parts.length !== 2) {
+                await ctx.reply('Формат: ID$ProductData. Например: 3$email:password');
+                return;
+            }
+            const [productId, productData] = parts;
+            try {
+                await knex('my_products').insert({
+                    product_id: productId,
+                    product_data: productData
+                });
+                await ctx.reply('Продукт успешно добавлен в БД.');
+            } catch (err) {
+                console.error('AddProductData error', err);
+                await ctx.reply('Во время добавления в БД произошла ошибка.');
+            }
+            break;
+        }
+        case 'DelProductData': {
+            adminStates.set(chatId, 'Sleep');
+            const parts = ctx.message.text.split('$');
+            if (parts.length !== 2) {
+                await ctx.reply('Формат: ID$ProductData');
+                return;
+            }
+            const [productId, productData] = parts;
+            try {
+                const rowsDeleted = await knex('my_products')
+                    .where({ product_id: productId, product_data: productData })
+                    .del();
+                await ctx.reply(rowsDeleted > 0 ? 'Продукт успешно удален.' : 'Продукт не найден.');
+            } catch (err) {
+                console.error('DelProductData error', err);
+                await ctx.reply('Во время удаления произошла ошибка.');
+            }
+            break;
+        }
     }
-
-    case 'AddProduct_N': {
-      Status = 'AddProduct_D';
-      Product.Name = text;
-      await ctx.reply('Укажите описание товара:');
-      break;
-    }
-
-    case 'AddProduct_D': {
-      Status = 'AddProduct_P';
-      Product.Description = text;
-      await ctx.reply('Укажите цену товара (в USD):');
-      break;
-    }
-
-    case 'AddProduct_P': {
-      Status = 'Sleep';
-      const price = Number(text);
-      if (!Number.isFinite(price)) {
-        await ctx.reply('Цена должна быть числом. Попробуйте заново: начните с /addproduct.');
-        return;
-      }
-      Product.Price = price;
-      try {
-        await knex('my_productsinfo').insert({
-          name: Product.Name,
-          description: Product.Description,
-          price: Product.Price,
-        });
-        await ctx.reply('Товар успешно добавлен.');
-      } catch (err) {
-        console.error('AddProduct_P error', err);
-        await ctx.reply('Во время добавления товара произошла ошибка.');
-      }
-      break;
-    }
-
-    case 'AddProductData': {
-      Status = 'Sleep';
-      const parts = text.split('$');
-      if (parts.length !== 2) {
-        await ctx.reply('Формат: ID$ProductData. Например: 3$email:password');
-        return;
-      }
-      const [productId, productData] = parts;
-      try {
-        await knex('my_products').insert({
-          product_id: productId,
-          product_data: productData,
-        });
-        await ctx.reply('Продукт успешно добавлен в БД.');
-      } catch (err) {
-        console.error('AddProductData error', err);
-        await ctx.reply('Во время добавления в БД произошла ошибка.');
-      }
-      break;
-    }
-
-    case 'DelProductData': {
-      Status = 'Sleep';
-      const parts = text.split('$');
-      if (parts.length !== 2) {
-        await ctx.reply('Формат: ID$ProductData');
-        return;
-      }
-      const [productId, productData] = parts;
-      try {
-        const rowsDeleted = await knex('my_products')
-          .where({ product_id: productId, product_data: productData })
-          .del();
-        await ctx.reply(rowsDeleted > 0 ? 'Продукт успешно удален.' : 'Продукт не найден.');
-      } catch (err) {
-        console.error('DelProductData error', err);
-        await ctx.reply('Во время удаления произошла ошибка.');
-      }
-      break;
-    }
-
-    default:
-      // Если статус не соответствует ожидаемым действиям — ничего не делаем
-      break;
-  }
 }
 
 // --- Админ-команды ---
 
 bot.command('cancel', async (ctx) => {
-  Status = 'Sleep';
-  await ctx.reply('Все текущие операции были отменены.');
+    const chatId = ctx.message.chat.id;
+    adminStates.set(chatId, 'Sleep');
+    await ctx.reply('Все текущие операции были отменены.');
 });
 
 bot.command('addproduct', async (ctx) => {
@@ -367,9 +361,16 @@ bot.command('addproduct', async (ctx) => {
   await ctx.reply('Укажите название товара:');
 });
 
+bot.command('addproduct', async (ctx) => {
+    const chatId = ctx.message.chat.id;
+    adminStates.set(chatId, 'AddProduct_N');
+    await ctx.reply('Укажите название товара:');
+});
+
 bot.command('addproductdata', async (ctx) => {
-  Status = 'AddProductData';
-  await ctx.reply('Отправьте данные для добавления в формате: ID$ProductData\nНапример: 3$email:password');
+    const chatId = ctx.message.chat.id;
+    adminStates.set(chatId, 'AddProductData');
+    await ctx.reply('Отправьте данные для добавления в формате: ID$ProductData\nНапример: 3$email:password');
 });
 
 bot.command('showproductdata', async (ctx) => {
@@ -388,13 +389,20 @@ bot.command('showproductdata', async (ctx) => {
 });
 
 bot.command('delproductdata', async (ctx) => {
-  Status = 'DelProductData';
-  await ctx.reply('Отправьте данные о продукте для удаления в формате: ID$ProductData');
+    const chatId = ctx.message.chat.id;
+    adminStates.set(chatId, 'DelProductData');
+    await ctx.reply('Отправьте данные о продукте для удаления в формате: ID$ProductData');
 });
 
 bot.command('delproduct', async (ctx) => {
   Status = 'DelProduct';
   await ctx.reply('Отправьте ID продукта, который хотите удалить:');
+});
+
+bot.command('delproduct', async (ctx) => {
+    const chatId = ctx.message.chat.id;
+    adminStates.set(chatId, 'DelProduct');
+    await ctx.reply('Отправьте ID продукта, который хотите удалить:');
 });
 
 bot.command('echo', async (ctx) => {
