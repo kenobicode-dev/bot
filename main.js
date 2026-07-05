@@ -34,9 +34,13 @@ bot.start(async (ctx) => {
   try {
     const name = ctx.message.from.first_name || 'пользователь';
     await ctx.reply(
-      `Добро пожаловать, ${name}! Рад приветствовать тебя в SITIZENSVPN.\n` +
-      `/showproducts — Просмотр всех продуктов\n` +
-      `/checkorder — Проверить статус заказа`
+      `🌐 CITIZENSVPN\n\n` +
+      `Добро пожаловать, ${name}!\n` +
+      `Рады приветствовать тебя в SITIZENSVPN.\n\n` +
+      `SITIZENSVPN - Твой доступ без ограничений!`,
+      Markup.inlineKeyboard([
+        Markup.button.callback('Просмотр всех продуктов', 'showproducts'),
+      ])
     );
   } catch (e) {
     console.error('start error', e);
@@ -50,6 +54,38 @@ bot.help(async (ctx) => {
   );
 });
 
+bot.action('showproducts', async (ctx) => {
+  try {
+    const productsInfo = await knex.select().from('my_productsinfo');
+
+    if (productsInfo.length === 0) {
+      await ctx.reply('‼️В магазине пока нет продуктов.‼️');
+      return;
+    }
+
+    for (const product of productsInfo) {
+      const [{ count }] = await knex('my_products')
+        .where({ product_id: product.product_id })
+        .count({ count: '*' });
+
+      await ctx.reply(
+        `🌐 CITIZENSVPN\n\n` +
+        `🖊 Название: ${product.name}\n\n` +
+        `📒 Описание: ${product.description}\n\n` +
+        `1️⃣ Кол-во ключей: 1 ключ\n\n` +
+        `💲 Цена: ${product.price}$\n`,
+
+        Markup.inlineKeyboard([
+          Markup.button.callback('Купить', `${product.product_id}$${product.price}`),
+        ])
+      );
+    }
+  } catch (err) {
+    console.error('/showproducts error', err);
+    await ctx.reply('‼️Ошибка при получении списка продуктов.‼️');
+  }
+});
+
 bot.action(/^check_order_(\w+)$/, async (ctx) => {
   try {
     await ctx.answerCbQuery();
@@ -58,25 +94,26 @@ bot.action(/^check_order_(\w+)$/, async (ctx) => {
     const [order] = await knex('my_orders').where({ order_id: orderId });
 
     if (!order) {
-      return await ctx.reply('Заказ не найден.');
+      return await ctx.reply('‼️Заказ не найден.‼️');
     }
 
     // Добавляем кнопку отмены
     await ctx.reply(
-      `ID заказа: ${order.order_id}\n` +
-      `ID продукта: ${order.product_id}\n` +
-      `Реквизиты: ${order.address}\n` +
-      `Сумма к оплате: ${order.price} BTC\n` +
-      `Статус: ${order.status}\n` +
-      `Товар: ${order.product_data}`,
+      `🌐 CITIZENSVPN\n\n` +
+      `📍 ID заказа: ${order.order_id}\n\n` +
+      `${order.status == 'Отменен' ? '🔴' : '🟠' } Статус: ${order.status}\n\n` +
+      `📂 Товар: ${order.product_data}\n\n` +
+      `🧾 Реквизиты: ${order.address}\n\n` +
+      `💲 Сумма к оплате: ${order.price} BTC\n\n`,
+      
       Markup.inlineKeyboard([
-        Markup.button.callback('Проверить заказ', `check_order_${order.order_id}`, order.status == "Отменен" ? true : false),
-        Markup.button.callback('Отменить заказ', `cancel_order_${order.order_id}`, order.status == "Отменен" ? true : false)
+        Markup.button.callback('❓ Проверить заказ', `check_order_${order.order_id}`, order.status == "Отменен" ? true : false),
+        Markup.button.callback('❌ Отменить заказ', `cancel_order_${order.order_id}`, order.status == "Отменен" ? true : false)
       ])
     );
   } catch (err) {
-    console.error('Ошибка проверки заказа', err);
-    await ctx.reply('Произошла ошибка.');
+    console.error('‼️Ошибка проверки заказа‼️', err);
+    await ctx.reply('‼️Произошла ошибка.‼️');
   }
 });
 
@@ -91,12 +128,12 @@ bot.action(/^cancel_order_(\w+)$/, async (ctx) => {
     const [order] = await knex('my_orders').where({ order_id: orderId });
 
     if (!order) {
-      return await ctx.reply('Заказ не найден или уже обработан.');
+      return await ctx.reply('‼️Заказ не найден или уже обработан.‼️');
     }
 
     // Проверяем, можно ли отменить заказ
     if (order.status === 'Выполнен') {
-      return await ctx.reply('Невозможно отменить выполненный заказ.');
+      return await ctx.reply('‼️Невозможно отменить выполненный заказ.‼️');
     }
 
     // Отменяем заказ
@@ -107,10 +144,10 @@ bot.action(/^cancel_order_(\w+)$/, async (ctx) => {
         product_data: 'Заказ отменен'
       });
 
-    await ctx.reply('Заказ успешно отменен.');
+    await ctx.reply('‼️Заказ успешно отменен.‼️');
   } catch (err) {
-    console.error('Ошибка отмены заказа', err);
-    await ctx.reply('Произошла ошибка при отмене заказа.');
+    console.error('‼️Ошибка отмены заказа‼️', err);
+    await ctx.reply('‼️Произошла ошибка при отмене заказа.‼️');
   }
 });
 // --- Вспомогательные функции ---
@@ -198,7 +235,7 @@ bot.on('callback_query', async (ctx) => {
     const Arra = {
       order_id: orderId,
       address: t_address,
-      status: 'В ожидании оплаты',
+      status: 'Ожидает оплаты',
       price: summaBtc,
       product_id: productId,
       created_at: now,
@@ -211,14 +248,18 @@ bot.on('callback_query', async (ctx) => {
     await ctx.answerCbQuery();
 
     await ctx.reply(
-      `Ваш заказ находится в обработке. В случае неоплаты в течение полутора часов заказ будет ликвидирован.\n\n` +
-      `ID заказа: ${orderId}\n` +
-      `Реквизиты для оплаты: ${t_address}\n` +
-      `Сумма к оплате: ${summaBtc} BTC\n\n` +
-      `Вы можете проверить статус вашего заказа.`,
+      `🌐 CITIZENSVPN\n\n` +
+      `🕑 Ваш заказ находится в обработке\n\n` +
+      `📍 ID заказа: ${orderId}\n\n` +
+      `🟠 Статус: Ожидает оплаты\n\n` +
+      `‼️ Время на оплату: 90 минут‼️\n` +
+      `‼️Через 90 минут заказ будет ликвидирован‼️\n\n` +
+      `🧾 Реквизиты для оплаты BTC: ${t_address}\n\n` +
+      `💲 Сумма к оплате: ${summaBtc} BTC\n\n` +
+      `🔄 Вы можете проверить статус вашего заказа.`,
       Markup.inlineKeyboard([
-        Markup.button.callback('Проверить заказ', `check_order_${orderId}`),
-        Markup.button.callback('Отменить заказ', `cancel_order_${orderId}`)
+        Markup.button.callback('❓ Проверить заказ', `check_order_${orderId}`),
+        Markup.button.callback('❌ Отменить заказ', `cancel_order_${orderId}`)
       ])
     );
   } catch (err) {
@@ -252,13 +293,14 @@ bot.command('showproducts', async (ctx) => {
         .count({ count: '*' });
 
       await ctx.reply(
-        `ID продукта: ${product.product_id}\n` +
-        `Название: ${product.name}\n` +
-        `Описание: ${product.description}\n` +
-        `Кол-во ключей: 1 ключ\n` +
-        `Цена: ${product.price}$\n` +
-        `-------------\n` +
-        `Кол-во на складе: ${count}`,
+        `🌐 CITIZENSVPN\n\n` +
+        // `📍 ID продукта: ${product.product_id}\n` +
+        // `--\n` +
+        `🖊 Название: ${product.name}\n\n` +
+        `📒 Описание: ${product.description}\n\n` +
+        `1️⃣ Кол-во ключей: 1 ключ\n\n` +
+        `💲 Цена: ${product.price}$\n`,
+
         Markup.inlineKeyboard([
           Markup.button.callback('Купить', `${product.product_id}$${product.price}`),
         ])
@@ -300,12 +342,12 @@ bot.on('text', async (ctx, next) => {
       }
 
       await ctx.reply(
-        `ID заказа: ${order.order_id}\n` +
-        `ID продукта: ${order.product_id}\n` +
-        `Реквизиты: ${order.address}\n` +
-        `Сумма к оплате: ${order.price} BTC\n` +
-        `Статус: ${order.status}\n` +
-        `Товар: ${order.product_data}`
+        `🌐 CITIZENSVPN\n\n` +
+        `📍 ID заказа: ${order.order_id}\n\n` +
+        `${order.status == 'Отменен' ? '🔴' : '🟠' } Статус: ${order.status}\n\n` +
+        `📂 Товар: ${order.product_data}\n\n` +
+        `🧾 Реквизиты: ${order.address}\n\n` +
+        `💲 Сумма к оплате: ${order.price} BTC\n`
       );
     } catch (err) {
       console.error('checkorder error', err);
@@ -417,9 +459,7 @@ async function handleAdminText(ctx) {
   }
 }
 
-
 // --- Админ-команды ---
-
 bot.command('cancel', async (ctx) => {
   const chatId = ctx.message.chat.id;
   adminStates.set(chatId, 'Sleep');
@@ -480,7 +520,6 @@ bot.command('echo', async (ctx) => {
 });
 
 // --- Периодическая проверка ордеров ---
-
 async function checkOrdersPeriodically() {
   try {
     const orders = await knex('my_orders')
