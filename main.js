@@ -103,8 +103,8 @@ bot.action(/^check_order_(\w+)$/, async (ctx) => {
       `📍 ID заказа: ${order.order_id}\n\n` +
       `${order.status == 'Отменен' ? '🔴' : '🟠' } Статус: ${order.status}\n\n` +
       `📂 Товар: ${order.product_data}\n\n` +
-      `🧾 Реквизиты: ${order.address}\n\n` +
-      `💲 Сумма к оплате: ${order.price} BTC\n\n`,
+      `${order.status == 'Отменен' ? `` : `🧾 Реквизиты: ${order.address}\n\n` }` +
+      `${order.status == 'Отменен' ? `` : `💲 Сумма к оплате: ${order.price} BTC\n\n`}`,
       
       Markup.inlineKeyboard([
         Markup.button.callback('❓ Проверить заказ', `check_order_${order.order_id}`, order.status == "Отменен" ? true : false),
@@ -252,8 +252,8 @@ bot.on('callback_query', async (ctx) => {
       `🕑 Ваш заказ находится в обработке\n\n` +
       `📍 ID заказа: ${orderId}\n\n` +
       `🟠 Статус: Ожидает оплаты\n\n` +
-      `‼️ Время на оплату: 90 минут‼️\n` +
-      `‼️Через 90 минут заказ будет ликвидирован‼️\n\n` +
+      `‼️ Время на оплату: 90 минут\n` +
+      `‼️Через 90 минут заказ будет ликвидирован\n\n` +
       `🧾 Реквизиты для оплаты BTC: ${t_address}\n\n` +
       `💲 Сумма к оплате: ${summaBtc} BTC\n\n` +
       `🔄 Вы можете проверить статус вашего заказа.`,
@@ -346,8 +346,8 @@ bot.on('text', async (ctx, next) => {
         `📍 ID заказа: ${order.order_id}\n\n` +
         `${order.status == 'Отменен' ? '🔴' : '🟠' } Статус: ${order.status}\n\n` +
         `📂 Товар: ${order.product_data}\n\n` +
-        `🧾 Реквизиты: ${order.address}\n\n` +
-        `💲 Сумма к оплате: ${order.price} BTC\n`
+        `${order.status == 'Отменен' ? `` : `🧾 Реквизиты: ${order.address}\n\n` }` +
+        `${order.status == 'Отменен' ? `` : `💲 Сумма к оплате: ${order.price} BTC\n\n`}`
       );
     } catch (err) {
       console.error('checkorder error', err);
