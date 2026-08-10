@@ -1,0 +1,1 @@
+GRANT ALL ON my_store.promo_codes TO 'adminbot'@'localhost';

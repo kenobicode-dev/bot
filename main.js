@@ -209,6 +209,115 @@ function generateOrderId() {
   return crypto.randomBytes(16).toString('hex');
 }
 
+// --- Промокоды ---
+
+async function getPromoCode(code, trx = knex) {
+  const normalizedCode = String(code)
+    .trim()
+    .toUpperCase();
+
+  if (!normalizedCode) {
+    return null;
+  }
+
+  const promo = await trx('promo_codes')
+    .where({
+      code: normalizedCode,
+      is_active: true,
+    })
+    .whereRaw('used_count < max_uses')
+    .where(function () {
+      this.whereNull('expires_at')
+        .orWhere('expires_at', '>', trx.fn.now());
+    })
+    .first();
+
+  return promo || null;
+}
+
+
+async function getKeyByPromoCode(code) {
+  const normalizedCode = String(code)
+    .trim()
+    .toUpperCase();
+
+  if (!normalizedCode) {
+    throw new Error('Промокод не указан');
+  }
+
+  return await knex.transaction(async (trx) => {
+
+    // Получаем промокод
+    const promo = await trx('promo_codes')
+      .where({
+        code: normalizedCode,
+        is_active: true,
+      })
+      .whereRaw('used_count < max_uses')
+      .where(function () {
+        this.whereNull('expires_at')
+          .orWhere('expires_at', '>', trx.fn.now());
+      })
+      .first()
+      .forUpdate();
+
+    if (!promo) {
+      throw new Error(
+        'Промокод недействителен, истёк или уже использован'
+      );
+    }
+
+
+    // Ищем свободный ключ
+    const item = await trx('my_products')
+      .where({
+        product_id: promo.product_id,
+      })
+      .first()
+      .forUpdate();
+
+    if (!item) {
+      throw new Error(
+        'Для этого промокода закончились ключи'
+      );
+    }
+
+
+    // Удаляем выданный ключ
+    const deleted = await trx('my_products')
+      .where({
+        product_id: item.product_id,
+        product_data: item.product_data,
+      })
+      .del();
+
+    if (!deleted) {
+      throw new Error(
+        'Не удалось забрать ключ. Попробуйте ещё раз.'
+      );
+    }
+
+
+    // Увеличиваем число использований
+    const newUsedCount = Number(promo.used_count) + 1;
+
+    await trx('promo_codes')
+      .where({
+        id: promo.id,
+      })
+      .update({
+        used_count: newUsedCount,
+        is_active: newUsedCount < Number(promo.max_uses),
+      });
+
+
+    return {
+      productId: item.product_id,
+      productData: item.product_data,
+      promoCode: normalizedCode,
+    };
+  });
+}
 // --- Обработка callback_query (кнопка «Купить») ---
 
 bot.on('callback_query', async (ctx) => {
@@ -327,6 +436,37 @@ bot.command('showproducts', async (ctx) => {
 bot.command('checkorder', async (ctx) => {
   checkOrderChats.add(ctx.message.chat.id);
   await ctx.reply('Введите ID заказа:');
+});
+
+bot.command('promo', async (ctx) => {
+  try {
+    const args = ctx.message.text.trim().split(/\s+/);
+
+    if (args.length < 2) {
+      await ctx.reply(
+        '🎁 Использование:\n\n' +
+        '/promo ПРОМОКОД'
+      );
+      return;
+    }
+
+    const code = args[1];
+
+    const result = await getKeyByPromoCode(code);
+
+    await ctx.reply(
+      `🎁 Промокод успешно активирован!\n\n` +
+      `🔑 Ваш ключ:\n\n` +
+      `${result.productData}`
+    );
+
+  } catch (err) {
+    console.error('promo error:', err);
+
+    await ctx.reply(
+      `❌ ${err.message}`
+    );
+  }
 });
 
 // --- Обработка текстовых сообщений (покупатели) ---
@@ -466,6 +606,98 @@ async function handleAdminText(ctx) {
       }
       break;
     }
+    case 'AddPromo': {
+      adminStates.set(chatId, 'Sleep');
+
+      const parts = ctx.message.text
+        .split('$')
+        .map(x => x.trim());
+
+      if (parts.length < 3 || parts.length > 4) {
+        await ctx.reply(
+          '❌ Неверный формат.\n\n' +
+          'Используйте:\n' +
+          'CODE$PRODUCT_ID$MAX_USES$EXPIRES_AT'
+        );
+        return;
+      }
+
+      const code = parts[0].toUpperCase();
+      const productId = parts[1];
+      const maxUses = Number(parts[2]);
+      const expiresAt = parts[3] || null;
+
+      if (!code) {
+        await ctx.reply('❌ Промокод не может быть пустым.');
+        return;
+      }
+
+      if (!Number.isInteger(maxUses) || maxUses < 1) {
+        await ctx.reply(
+          '❌ MAX_USES должен быть целым числом больше 0.'
+        );
+        return;
+      }
+
+      try {
+
+        // Проверяем, существует ли товар
+        const [product] = await knex('my_productsinfo')
+          .where({
+            product_id: productId,
+          });
+
+        if (!product) {
+          await ctx.reply(
+            `❌ Товар с product_id ${productId} не найден.`
+          );
+          return;
+        }
+
+
+        // Проверяем, нет ли такого промокода
+        const [existingPromo] = await knex('promo_codes')
+          .where({
+            code,
+          });
+
+        if (existingPromo) {
+          await ctx.reply(
+            '❌ Такой промокод уже существует.'
+          );
+          return;
+        }
+
+
+        // Создаём промокод
+        await knex('promo_codes').insert({
+          code,
+          product_id: productId,
+          max_uses: maxUses,
+          used_count: 0,
+          expires_at: expiresAt,
+          is_active: true,
+        });
+
+
+        await ctx.reply(
+          `✅ Промокод создан!\n\n` +
+          `🎟 Код: ${code}\n` +
+          `📦 Product ID: ${productId}\n` +
+          `🔢 Активаций: ${maxUses}\n` +
+          `⏰ До: ${expiresAt || 'без ограничения'}`
+        );
+
+      } catch (err) {
+        console.error('AddPromo error:', err);
+
+        await ctx.reply(
+          '❌ Ошибка при создании промокода.'
+        );
+      }
+
+      break;
+    }
   }
 }
 
@@ -515,14 +747,117 @@ bot.command('delproductdata', async (ctx) => {
 });
 
 bot.command('delproduct', async (ctx) => {
-  Status = 'DelProduct';
-  await ctx.reply('Отправьте ID продукта, который хотите удалить:');
-});
-
-bot.command('delproduct', async (ctx) => {
   const chatId = ctx.message.chat.id;
   adminStates.set(chatId, 'DelProduct');
   await ctx.reply('Отправьте ID продукта, который хотите удалить:');
+});
+
+bot.command('addpromo', async (ctx) => {
+  const chatId = ctx.message.chat.id;
+
+  if (chatId !== conf.adminChatId) {
+    return;
+  }
+
+  adminStates.set(chatId, 'AddPromo');
+
+  await ctx.reply(
+    '🎟 Создание промокода\n\n' +
+    'Отправьте:\n\n' +
+    'CODE$PRODUCT_ID$MAX_USES$EXPIRES_AT\n\n' +
+    'Например:\n' +
+    'FREE-12345$3$1$2026-12-31 23:59:59\n\n' +
+    'Без срока:\n' +
+    'FREE-12345$3$1'
+  );
+});
+
+bot.command('showpromos', async (ctx) => {
+  if (ctx.message.chat.id !== conf.adminChatId) {
+    return;
+  }
+
+  try {
+    const promos = await knex('promo_codes')
+      .orderBy('id', 'desc');
+
+    if (promos.length === 0) {
+      await ctx.reply(
+        '🎟 Промокодов пока нет.'
+      );
+      return;
+    }
+
+    let message = '🎟 ПРОМОКОДЫ\n\n';
+
+    for (const promo of promos) {
+      message +=
+        `━━━━━━━━━━━━━━\n` +
+        `🎟 ${promo.code}\n` +
+        `📦 Product ID: ${promo.product_id}\n` +
+        `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
+        `⏰ Истекает: ${promo.expires_at || 'нет'}\n` +
+        `📌 Статус: ${promo.is_active ? 'Активен' : 'Неактивен'}\n`;
+    }
+
+    await ctx.reply(message);
+
+  } catch (err) {
+    console.error('showpromos error:', err);
+
+    await ctx.reply(
+      '❌ Ошибка при получении промокодов.'
+    );
+  }
+});
+
+bot.command('delpromo', async (ctx) => {
+  if (ctx.message.chat.id !== conf.adminChatId) {
+    return;
+  }
+
+  const args = ctx.message.text
+    .trim()
+    .split(/\s+/);
+
+  if (args.length < 2) {
+    await ctx.reply(
+      'Использование:\n\n' +
+      '/delpromo CODE'
+    );
+    return;
+  }
+
+  const code = args[1]
+    .trim()
+    .toUpperCase();
+
+  try {
+
+    const deleted = await knex('promo_codes')
+      .where({
+        code,
+      })
+      .del();
+
+    if (deleted === 0) {
+      await ctx.reply(
+        '❌ Промокод не найден.'
+      );
+      return;
+    }
+
+    await ctx.reply(
+      `✅ Промокод ${code} удалён.`
+    );
+
+  } catch (err) {
+    console.error('delpromo error:', err);
+
+    await ctx.reply(
+      '❌ Ошибка при удалении промокода.'
+    );
+  }
 });
 
 bot.command('echo', async (ctx) => {
@@ -581,7 +916,7 @@ async function checkOrdersPeriodically() {
 
       if (diffMs >= ninetyMinutesMs) {
         await knex('my_orders')
-          .where({ order_id: order.order_id, status: "Отменен" }) // добавил в обьект status: "Отменен"
+          .where({ order_id: order.order_id }) // добавил в обьект status: "Отменен"
           .del();
       }
     }
