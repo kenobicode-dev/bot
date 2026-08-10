@@ -413,7 +413,7 @@ bot.command('showproducts', async (ctx) => {
 
       await ctx.reply(
         `🌐 CITIZENSVPN\n\n` +
-        // `📍 ID продукта: ${product.product_id}\n` +
+        `📍 ID продукта: ${product.product_id}\n` +
         // `--\n` +
         `🖊 Название: ${product.name}\n\n` +
         `📒 Описание: ${product.description}\n\n` +
@@ -438,6 +438,37 @@ bot.command('checkorder', async (ctx) => {
   await ctx.reply('Введите ID заказа:');
 });
 
+// bot.command('promo', async (ctx) => {
+//   try {
+//     const args = ctx.message.text.trim().split(/\s+/);
+
+//     if (args.length < 2) {
+//       await ctx.reply(
+//         '🎁 Использование:\n\n' +
+//         '/promo ПРОМОКОД'
+//       );
+//       return;
+//     }
+
+//     const code = args[1];
+
+//     const result = await getKeyByPromoCode(code);
+
+//     await ctx.reply(
+//       `🎁 Промокод успешно активирован!\n\n` +
+//       `🔑 Ваш ключ:\n\n` +
+//       `${result.productData}`
+//     );
+
+//   } catch (err) {
+//     console.error('promo error:', err);
+
+//     await ctx.reply(
+//       `❌ ${err.message}`
+//     );
+//   }
+// });
+
 bot.command('promo', async (ctx) => {
   try {
     const args = ctx.message.text.trim().split(/\s+/);
@@ -454,10 +485,27 @@ bot.command('promo', async (ctx) => {
 
     const result = await getKeyByPromoCode(code);
 
-    await ctx.reply(
-      `🎁 Промокод успешно активирован!\n\n` +
-      `🔑 Ваш ключ:\n\n` +
-      `${result.productData}`
+    // Формируем TXT-файл
+    const fileContent = String(result.productData)
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r');
+
+    const fileBuffer = Buffer.from(
+      fileContent,
+      'utf8'
+    );
+
+    await ctx.replyWithDocument(
+      {
+        source: fileBuffer,
+        filename: `key_${result.productId}.ovpn`,
+      },
+      {
+        caption:
+          `🎁 Промокод активирован!\n\n` +
+          `📦 Ваш файл с ключом прикреплён ниже.`,
+      }
     );
 
   } catch (err) {
@@ -578,7 +626,7 @@ async function handleAdminText(ctx) {
       try {
         await knex('my_products').insert({
           product_id: productId,
-          product_data: productData
+          product_data: JSON.stringify(productData)
         });
         await ctx.reply('Продукт успешно добавлен в БД.');
       } catch (err) {
@@ -642,14 +690,15 @@ async function handleAdminText(ctx) {
       try {
 
         // Проверяем, существует ли товар
-        const [product] = await knex('my_productsinfo')
+        const product = await knex('my_products')
           .where({
             product_id: productId,
-          });
+          })
+          .first();
 
         if (!product) {
           await ctx.reply(
-            `❌ Товар с product_id ${productId} не найден.`
+            `❌ Для product_id ${productId} нет доступных ключей в my_products.`
           );
           return;
         }
@@ -706,11 +755,6 @@ bot.command('cancel', async (ctx) => {
   const chatId = ctx.message.chat.id;
   adminStates.set(chatId, 'Sleep');
   await ctx.reply('Все текущие операции были отменены.');
-});
-
-bot.command('addproduct', async (ctx) => {
-  Status = 'AddProduct_N';
-  await ctx.reply('Укажите название товара:');
 });
 
 bot.command('addproduct', async (ctx) => {

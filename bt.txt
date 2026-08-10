@@ -1,1 +1,4 @@
 GRANT ALL ON my_store.promo_codes TO 'adminbot'@'localhost';
+
+ALTER TABLE my_products
+MODIFY COLUMN product_data TEXT NOT NULL;
