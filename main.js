@@ -1,10 +1,20 @@
-const conf = require('./Config.js');
-const crypto = require('crypto'); // вместо MD5 (MD5 устарел и небезопасен)
-const { Telegraf, Markup } = require('telegraf');
-const knex = require('knex')(conf.MySQL);
-const axios = require('axios');
-const bjs = require('bitcoinjs-lib');
-const XPubGenerator = require('xpub-generator').XPubGenerator;
+
+import {conf} from './conf.js';
+import crypto from 'crypto';
+import { Telegraf, Markup } from 'telegraf';
+import knexLib from 'knex';
+
+import axios from 'axios';
+import * as bjs from 'bitcoinjs-lib';
+// import { XPubGenerator } from 'xpub-generator';
+import bc_check from "./bccontrols/bc_check.js"
+import { log } from 'console';
+
+const knex = knexLib(conf.MySQL);
+
+bc_check()
+
+
 
 const TenMinutes = 10 * 60 * 1000; // интервал проверки ордеров (мс)
 
@@ -226,7 +236,7 @@ bot.on('callback_query', async (ctx) => {
 
     do {
       didi++;
-      t_address = new XPubGenerator(conf.xPub, bjs.networks.bitcoin).nthReceiving(didi);
+      t_address = process.env.BCAD; // ПРИДУМАТЬ !!!
     } while (existingAddresses.includes(t_address));
 
     const orderId = generateOrderId();
@@ -528,6 +538,10 @@ async function checkOrdersPeriodically() {
 
     for (const order of orders) {
       const balance = await getBalance(order.address);
+
+      console.log("balance", balance);
+      
+
       if (balance.received === null) continue; // ошибка API — пропускаем
 
       const paidAmount = balance.received;
@@ -576,9 +590,10 @@ async function checkOrdersPeriodically() {
   }
 }
 
+
+
 // --- Запуск ---
 
 bot.launch().then(() => {
-  // console.log('Bot Started!');
   setInterval(checkOrdersPeriodically, TenMinutes);
 });
