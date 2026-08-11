@@ -26,7 +26,42 @@ admins commands:
     /addpromo -
     /showpromos -
     /delpromo -
-    
-    
-    
-    
+
+    # DATABASE
+    CREATE TABLE `my_orders` (
+        `order_id` char(32) NOT NULL,
+        `address` varchar(255) NOT NULL,
+        `status` varchar(255) NOT NULL,
+        `price` float(8,8) NOT NULL,
+        `product_id` int NOT NULL,
+        `product_data` varchar(255) DEFAULT NULL,
+        `created_at` date NOT NULL,
+        `order_data` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+    CREATE TABLE `my_products` (
+        `product_id` int NOT NULL,
+        `product_data` text NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+        
+    CREATE TABLE `my_productsinfo` (
+        `product_id` int NOT NULL AUTO_INCREMENT,
+        `name` varchar(255) NOT NULL,
+        `description` varchar(255) NOT NULL,
+        `price` int NOT NULL,
+        PRIMARY KEY (`product_id`)
+        ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+    CREATE TABLE `promo_codes` (
+        `id` int NOT NULL AUTO_INCREMENT,
+        `code` varchar(100) NOT NULL,
+        `product_id` int NOT NULL,
+        `max_uses` int NOT NULL DEFAULT '1',
+        `used_count` int NOT NULL DEFAULT '0',
+        `expires_at` datetime DEFAULT NULL,
+        `is_active` tinyint(1) NOT NULL DEFAULT '1',
+        `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `code` (`code`)
+        ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+        
