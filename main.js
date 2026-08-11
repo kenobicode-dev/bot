@@ -7,14 +7,11 @@ import knexLib from 'knex';
 import axios from 'axios';
 import * as bjs from 'bitcoinjs-lib';
 // import { XPubGenerator } from 'xpub-generator';
-import bc_check from "./bccontrols/bc_check.js"
-import { log } from 'console';
+// import bc_check from "./bccontrols/bc_check.js"
 
 const knex = knexLib(conf.MySQL);
 
-bc_check()
-
-
+// bc_check()
 
 const TenMinutes = 10 * 60 * 1000; // интервал проверки ордеров (мс)
 
@@ -47,10 +44,14 @@ bot.start(async (ctx) => {
       `🌐 CITIZENSVPN\n\n` +
       `Добро пожаловать, ${name}!\n` +
       `Рады приветствовать тебя в SITIZENSVPN.\n\n` +
-      `SITIZENSVPN - Твой доступ без ограничений!`,
+      `Рады приветствовать тебя в SITIZENSVPN.\n\n` +
+      `SITIZENSVPN - Свободная сеть!`,
       Markup.inlineKeyboard([
-        Markup.button.callback('Просмотр всех продуктов', 'showproducts'),
-      ])
+        Markup.button.callback('Ввести промокод', 'promo'),
+      ]),
+      // Markup.inlineKeyboard([
+      //   Markup.button.callback('Просмотр всех продуктов', 'showproducts'),
+      // ])
     );
   } catch (e) {
     console.error('start error', e);
@@ -59,42 +60,64 @@ bot.start(async (ctx) => {
 
 bot.help(async (ctx) => {
   await ctx.reply(
-    `/showproducts — Просмотр всех продуктов\n` +
-    `/checkorder — Проверить статус заказа`
+    `/promo — Ввести промокод`
+    // `/showproducts — Просмотр всех продуктов\n` +
+    // `/checkorder — Проверить статус заказа`
   );
 });
 
-bot.action('showproducts', async (ctx) => {
+bot.action('promo', async (ctx) => {
   try {
-    const productsInfo = await knex.select().from('my_productsinfo');
+    await ctx.answerCbQuery();
 
-    if (productsInfo.length === 0) {
-      await ctx.reply('‼️В магазине пока нет продуктов.‼️');
-      return;
-    }
+    const chatId = ctx.chat.id;
 
-    for (const product of productsInfo) {
-      const [{ count }] = await knex('my_products')
-        .where({ product_id: product.product_id })
-        .count({ count: '*' });
+    adminStates.set(chatId, 'EnterPromo');
 
-      await ctx.reply(
-        `🌐 CITIZENSVPN\n\n` +
-        `🖊 Название: ${product.name}\n\n` +
-        `📒 Описание: ${product.description}\n\n` +
-        `1️⃣ Кол-во ключей: 1 ключ\n\n` +
-        `💲 Цена: ${product.price}$\n`,
+    await ctx.reply(
+      '🎁 Введите промокод:'
+    );
 
-        Markup.inlineKeyboard([
-          Markup.button.callback('Купить', `${product.product_id}$${product.price}`),
-        ])
-      );
-    }
   } catch (err) {
-    console.error('/showproducts error', err);
-    await ctx.reply('‼️Ошибка при получении списка продуктов.‼️');
+    console.error('enter_promo error:', err);
+
+    await ctx.reply(
+      '❌ Не удалось открыть ввод промокода.'
+    );
   }
 });
+
+// bot.action('showproducts', async (ctx) => {
+//   try {
+//     const productsInfo = await knex.select().from('my_productsinfo');
+
+//     if (productsInfo.length === 0) {
+//       await ctx.reply('‼️В магазине пока нет продуктов.‼️');
+//       return;
+//     }
+
+//     for (const product of productsInfo) {
+//       const [{ count }] = await knex('my_products')
+//         .where({ product_id: product.product_id })
+//         .count({ count: '*' });
+
+//       await ctx.reply(
+//         `🌐 CITIZENSVPN\n\n` +
+//         `🖊 Название: ${product.name}\n\n` +
+//         `📒 Описание: ${product.description}\n\n` +
+//         `1️⃣ Кол-во ключей: 1 ключ\n\n` +
+//         `💲 Цена: ${product.price}$\n`,
+
+//         Markup.inlineKeyboard([
+//           Markup.button.callback('Купить', `${product.product_id}$${product.price}`),
+//         ])
+//       );
+//     }
+//   } catch (err) {
+//     console.error('/showproducts error', err);
+//     await ctx.reply('‼️Ошибка при получении списка продуктов.‼️');
+//   }
+// });
 
 bot.action(/^check_order_(\w+)$/, async (ctx) => {
   try {
@@ -397,46 +420,46 @@ bot.on('callback_query', async (ctx) => {
 
 // --- /showproducts ---
 
-bot.command('showproducts', async (ctx) => {
-  try {
-    const productsInfo = await knex.select().from('my_productsinfo');
+// bot.command('showproducts', async (ctx) => {
+//   try {
+//     const productsInfo = await knex.select().from('my_productsinfo');
 
-    if (productsInfo.length === 0) {
-      await ctx.reply('В магазине пока нет продуктов.');
-      return;
-    }
+//     if (productsInfo.length === 0) {
+//       await ctx.reply('В магазине пока нет продуктов.');
+//       return;
+//     }
 
-    for (const product of productsInfo) {
-      const [{ count }] = await knex('my_products')
-        .where({ product_id: product.product_id })
-        .count({ count: '*' });
+//     for (const product of productsInfo) {
+//       const [{ count }] = await knex('my_products')
+//         .where({ product_id: product.product_id })
+//         .count({ count: '*' });
 
-      await ctx.reply(
-        `🌐 CITIZENSVPN\n\n` +
-        `📍 ID продукта: ${product.product_id}\n` +
-        // `--\n` +
-        `🖊 Название: ${product.name}\n\n` +
-        `📒 Описание: ${product.description}\n\n` +
-        `1️⃣ Кол-во ключей: 1 ключ\n\n` +
-        `💲 Цена: ${product.price}$\n`,
+//       await ctx.reply(
+//         `🌐 CITIZENSVPN\n\n` +
+//         `📍 ID продукта: ${product.product_id}\n` +
+//         // `--\n` +
+//         `🖊 Название: ${product.name}\n\n` +
+//         `📒 Описание: ${product.description}\n\n` +
+//         `1️⃣ Кол-во ключей: 1 ключ\n\n` +
+//         `💲 Цена: ${product.price}$\n`,
 
-        Markup.inlineKeyboard([
-          Markup.button.callback('Купить', `${product.product_id}$${product.price}`),
-        ])
-      );
-    }
-  } catch (err) {
-    console.error('/showproducts error', err);
-    await ctx.reply('Ошибка при получении списка продуктов.');
-  }
-});
+//         Markup.inlineKeyboard([
+//           Markup.button.callback('Купить', `${product.product_id}$${product.price}`),
+//         ])
+//       );
+//     }
+//   } catch (err) {
+//     console.error('/showproducts error', err);
+//     await ctx.reply('Ошибка при получении списка продуктов.');
+//   }
+// });
 
 // --- /checkorder ---
 
-bot.command('checkorder', async (ctx) => {
-  checkOrderChats.add(ctx.message.chat.id);
-  await ctx.reply('Введите ID заказа:');
-});
+// bot.command('checkorder', async (ctx) => {
+//   checkOrderChats.add(ctx.message.chat.id);
+//   await ctx.reply('Введите ID заказа:');
+// });
 
 // bot.command('promo', async (ctx) => {
 //   try {
@@ -504,7 +527,7 @@ bot.command('promo', async (ctx) => {
       {
         caption:
           `🎁 Промокод активирован!\n\n` +
-          `📦 Ваш файл с ключом прикреплён ниже.`,
+          `📦 Ваш файл: key_${result.productId}.ovpn`,
       }
     );
 
@@ -747,6 +770,37 @@ async function handleAdminText(ctx) {
 
       break;
     }
+    case 'EnterPromo': {
+      adminStates.set(chatId, 'Sleep');
+
+      const code = ctx.message.text
+        .trim()
+        .toUpperCase();
+
+      if (!code) {
+        await ctx.reply('❌ Промокод не может быть пустым.');
+        break;
+      }
+
+      try {
+        const result = await getKeyByPromoCode(code);
+
+        await sendKeyFile(
+          ctx,
+          result.productData,
+          result.productId
+        );
+
+      } catch (err) {
+        console.error('EnterPromo error:', err);
+
+        await ctx.reply(
+          `❌ ${err.message}`
+        );
+      }
+
+      break;
+    }
   }
 }
 
@@ -909,70 +963,71 @@ bot.command('echo', async (ctx) => {
 });
 
 // --- Периодическая проверка ордеров ---
-async function checkOrdersPeriodically() {
-  try {
-    const orders = await knex('my_orders')
-      .whereNot({ status: 'Выполнен' })
-      .select('order_id', 'address', 'status', 'price', 'product_id', 'created_at');
+// async function checkOrdersPeriodically() {
+//   try {
+//     const orders = await knex('my_orders')
+//       .whereNot({ status: 'Выполнен' })
+//       .select('order_id', 'address', 'status', 'price', 'product_id', 'created_at');
 
-    for (const order of orders) {
-      const balance = await getBalance(order.address);
+//     for (const order of orders) {
+//       const balance = await getBalance(order.address);
 
-      console.log("balance", balance);
+//       console.log("balance", balance);
       
 
-      if (balance.received === null) continue; // ошибка API — пропускаем
+//       if (balance.received === null) continue; // ошибка API — пропускаем
 
-      const paidAmount = balance.received;
-      const requiredAmount = order.price;
+//       const paidAmount = balance.received;
+//       const requiredAmount = order.price;
 
-      // Оплата получена
-      if (paidAmount >= requiredAmount) {
-        // Берем товар из my_products по product_id
-        const [item] = await knex('my_products').where({ product_id: order.product_id });
-        if (item) {
-          await knex('my_products')
-            .where({ product_id: item.product_id, product_data: item.product_data })
-            .del();
-          await knex('my_orders')
-            .where({ order_id: order.order_id })
-            .update({
-              status: 'Выполнен',
-              product_data: item.product_data,
-            });
-        }
-        continue;
-      }
+//       // Оплата получена
+//       if (paidAmount >= requiredAmount) {
+//         // Берем товар из my_products по product_id
+//         const [item] = await knex('my_products').where({ product_id: order.product_id });
+//         if (item) {
+//           await knex('my_products')
+//             .where({ product_id: item.product_id, product_data: item.product_data })
+//             .del();
+//           await knex('my_orders')
+//             .where({ order_id: order.order_id })
+//             .update({
+//               status: 'Выполнен',
+//               product_data: item.product_data,
+//             });
+//         }
+//         continue;
+//       }
 
-      // Есть неподтвержденные средства
-      if (balance.unconfirmed >= requiredAmount) {
-        await knex('my_orders')
-          .where({ order_id: order.order_id })
-          .update({ status: 'В ожидании подтверждений' });
-        continue;
-      }
+//       // Есть неподтвержденные средства
+//       if (balance.unconfirmed >= requiredAmount) {
+//         await knex('my_orders')
+//           .where({ order_id: order.order_id })
+//           .update({ status: 'В ожидании подтверждений' });
+//         continue;
+//       }
 
-      // Проверка истечения времени (90 минут)
-      const createdAt = new Date(order.created_at);
-      const now = new Date();
-      const diffMs = now.getTime() - createdAt.getTime();
-      const ninetyMinutesMs = 90 * 60 * 1000;
+//       // Проверка истечения времени (90 минут)
+//       const createdAt = new Date(order.created_at);
+//       const now = new Date();
+//       const diffMs = now.getTime() - createdAt.getTime();
+//       const ninetyMinutesMs = 90 * 60 * 1000;
 
-      if (diffMs >= ninetyMinutesMs) {
-        await knex('my_orders')
-          .where({ order_id: order.order_id }) // добавил в обьект status: "Отменен"
-          .del();
-      }
-    }
-  } catch (err) {
-    console.error('checkOrdersPeriodically error', err);
-  }
-}
+//       if (diffMs >= ninetyMinutesMs) {
+//         await knex('my_orders')
+//           .where({ order_id: order.order_id }) // добавил в обьект status: "Отменен"
+//           .del();
+//       }
+//     }
+//   } catch (err) {
+//     console.error('checkOrdersPeriodically error', err);
+//   }
+// }
 
 
 
 // --- Запуск ---
 
 bot.launch().then(() => {
-  setInterval(checkOrdersPeriodically, TenMinutes);
+  // setInterval(checkOrdersPeriodically, TenMinutes);
+  console.log("STARTED");
 });
