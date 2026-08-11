@@ -3,20 +3,14 @@ import {conf} from './conf.js';
 import crypto from 'crypto';
 import { Telegraf, Markup } from 'telegraf';
 import knexLib from 'knex';
-
 import axios from 'axios';
 import * as bjs from 'bitcoinjs-lib';
-// import { XPubGenerator } from 'xpub-generator';
-// import bc_check from "./bccontrols/bc_check.js"
 
 const knex = knexLib(conf.MySQL);
-
-// bc_check()
-
-const TenMinutes = 10 * 60 * 1000; // интервал проверки ордеров (мс)
+const TenMinutes = 10 * 60 * 1000;
 
 let Status = 'Sleep';
-const checkOrderChats = new Set(); // вместо массива — быстрее и чище
+const checkOrderChats = new Set();
 
 const Product = {
   Name: '',
@@ -26,16 +20,13 @@ const Product = {
 
 const bot = new Telegraf(conf.authToken);
 
-// --- Middleware для админа ---
 bot.use((ctx, next) => {
   if (ctx.message?.chat?.id === conf.adminChatId) {
     return next();
   }
-  // Если не админ — просто пропускаем дальше (обычные команды работают)
+
   return next();
 });
-
-// --- Команды бота ---
 
 bot.start(async (ctx) => {
   try {
@@ -49,9 +40,6 @@ bot.start(async (ctx) => {
       Markup.inlineKeyboard([
         Markup.button.callback('Ввести промокод', 'promo'),
       ]),
-      // Markup.inlineKeyboard([
-      //   Markup.button.callback('Просмотр всех продуктов', 'showproducts'),
-      // ])
     );
   } catch (e) {
     console.error('start error', e);
@@ -61,8 +49,6 @@ bot.start(async (ctx) => {
 bot.help(async (ctx) => {
   await ctx.reply(
     `/promo — Ввести промокод`
-    // `/showproducts — Просмотр всех продуктов\n` +
-    // `/checkorder — Проверить статус заказа`
   );
 });
 
@@ -86,38 +72,6 @@ bot.action('promo', async (ctx) => {
     );
   }
 });
-
-// bot.action('showproducts', async (ctx) => {
-//   try {
-//     const productsInfo = await knex.select().from('my_productsinfo');
-
-//     if (productsInfo.length === 0) {
-//       await ctx.reply('‼️В магазине пока нет продуктов.‼️');
-//       return;
-//     }
-
-//     for (const product of productsInfo) {
-//       const [{ count }] = await knex('my_products')
-//         .where({ product_id: product.product_id })
-//         .count({ count: '*' });
-
-//       await ctx.reply(
-//         `🌐 CITIZENSVPN\n\n` +
-//         `🖊 Название: ${product.name}\n\n` +
-//         `📒 Описание: ${product.description}\n\n` +
-//         `1️⃣ Кол-во ключей: 1 ключ\n\n` +
-//         `💲 Цена: ${product.price}$\n`,
-
-//         Markup.inlineKeyboard([
-//           Markup.button.callback('Купить', `${product.product_id}$${product.price}`),
-//         ])
-//       );
-//     }
-//   } catch (err) {
-//     console.error('/showproducts error', err);
-//     await ctx.reply('‼️Ошибка при получении списка продуктов.‼️');
-//   }
-// });
 
 bot.action(/^check_order_(\w+)$/, async (ctx) => {
   try {
@@ -150,7 +104,7 @@ bot.action(/^check_order_(\w+)$/, async (ctx) => {
   }
 });
 
-// Обработчик отмены заказа через callback
+
 bot.action(/^cancel_order_(\w+)$/, async (ctx) => {
   try {
     await ctx.answerCbQuery();
@@ -183,11 +137,10 @@ bot.action(/^cancel_order_(\w+)$/, async (ctx) => {
     await ctx.reply('‼️Произошла ошибка при отмене заказа.‼️');
   }
 });
-// --- Вспомогательные функции ---
+
 
 async function calcPrice(priceUsd) {
   try {
-    // CoinMarketCap API: лучше использовать свой API-ключ, если требуется
     const response = await axios.get(
       'https://pro-api.coinmarketcap.com/v2/tools/price-conversion',
       {
@@ -228,11 +181,8 @@ async function getBalance(address) {
 }
 
 function generateOrderId() {
-  // Более надежный вариант, чем MD5(Date + callback_id)
   return crypto.randomBytes(16).toString('hex');
 }
-
-// --- Промокоды ---
 
 async function getPromoCode(code, trx = knex) {
   const normalizedCode = String(code)
@@ -270,7 +220,6 @@ async function getKeyByPromoCode(code) {
 
   return await knex.transaction(async (trx) => {
 
-    // Получаем промокод
     const promo = await trx('promo_codes')
       .where({
         code: normalizedCode,
@@ -290,8 +239,6 @@ async function getKeyByPromoCode(code) {
       );
     }
 
-
-    // Ищем свободный ключ
     const item = await trx('my_products')
       .where({
         product_id: promo.product_id,
@@ -305,8 +252,6 @@ async function getKeyByPromoCode(code) {
       );
     }
 
-
-    // Удаляем выданный ключ
     const deleted = await trx('my_products')
       .where({
         product_id: item.product_id,
@@ -320,8 +265,6 @@ async function getKeyByPromoCode(code) {
       );
     }
 
-
-    // Увеличиваем число использований
     const newUsedCount = Number(promo.used_count) + 1;
 
     await trx('promo_codes')
@@ -333,7 +276,6 @@ async function getKeyByPromoCode(code) {
         is_active: newUsedCount < Number(promo.max_uses),
       });
 
-
     return {
       productId: item.product_id,
       productData: item.product_data,
@@ -341,7 +283,6 @@ async function getKeyByPromoCode(code) {
     };
   });
 }
-// --- Обработка callback_query (кнопка «Купить») ---
 
 bot.on('callback_query', async (ctx) => {
   try {
@@ -385,8 +326,6 @@ bot.on('callback_query', async (ctx) => {
     };
 
     await knex('my_orders').insert(Arra);
-
-    // ИСПРАВЛЕНО: ctx.answerCbQuery() вместо ctx.answerCallbackQuery()
     await ctx.answerCbQuery();
 
     await ctx.reply(
@@ -406,7 +345,6 @@ bot.on('callback_query', async (ctx) => {
     );
   } catch (err) {
     console.error('callback_query error', err);
-    // Если ctx.update.callback_query существует — отвечаем через него, иначе просто логируем
     if (ctx.update && ctx.update.callback_query) {
       try {
         await ctx.answerCbQuery({ text: 'Произошла ошибка. Попробуйте позднее.', show_alert: true });
@@ -414,83 +352,8 @@ bot.on('callback_query', async (ctx) => {
         console.warn('Не удалось отправить answerCbQuery', e);
       }
     }
-    // Дальше можно отправить обычное сообщение, если это уместно
   }
 });
-
-// --- /showproducts ---
-
-// bot.command('showproducts', async (ctx) => {
-//   try {
-//     const productsInfo = await knex.select().from('my_productsinfo');
-
-//     if (productsInfo.length === 0) {
-//       await ctx.reply('В магазине пока нет продуктов.');
-//       return;
-//     }
-
-//     for (const product of productsInfo) {
-//       const [{ count }] = await knex('my_products')
-//         .where({ product_id: product.product_id })
-//         .count({ count: '*' });
-
-//       await ctx.reply(
-//         `🌐 CITIZENSVPN\n\n` +
-//         `📍 ID продукта: ${product.product_id}\n` +
-//         // `--\n` +
-//         `🖊 Название: ${product.name}\n\n` +
-//         `📒 Описание: ${product.description}\n\n` +
-//         `1️⃣ Кол-во ключей: 1 ключ\n\n` +
-//         `💲 Цена: ${product.price}$\n`,
-
-//         Markup.inlineKeyboard([
-//           Markup.button.callback('Купить', `${product.product_id}$${product.price}`),
-//         ])
-//       );
-//     }
-//   } catch (err) {
-//     console.error('/showproducts error', err);
-//     await ctx.reply('Ошибка при получении списка продуктов.');
-//   }
-// });
-
-// --- /checkorder ---
-
-// bot.command('checkorder', async (ctx) => {
-//   checkOrderChats.add(ctx.message.chat.id);
-//   await ctx.reply('Введите ID заказа:');
-// });
-
-// bot.command('promo', async (ctx) => {
-//   try {
-//     const args = ctx.message.text.trim().split(/\s+/);
-
-//     if (args.length < 2) {
-//       await ctx.reply(
-//         '🎁 Использование:\n\n' +
-//         '/promo ПРОМОКОД'
-//       );
-//       return;
-//     }
-
-//     const code = args[1];
-
-//     const result = await getKeyByPromoCode(code);
-
-//     await ctx.reply(
-//       `🎁 Промокод успешно активирован!\n\n` +
-//       `🔑 Ваш ключ:\n\n` +
-//       `${result.productData}`
-//     );
-
-//   } catch (err) {
-//     console.error('promo error:', err);
-
-//     await ctx.reply(
-//       `❌ ${err.message}`
-//     );
-//   }
-// });
 
 bot.command('promo', async (ctx) => {
   try {
@@ -540,8 +403,6 @@ bot.command('promo', async (ctx) => {
   }
 });
 
-// --- Обработка текстовых сообщений (покупатели) ---
-
 bot.on('text', async (ctx, next) => {
   const chatId = ctx.message.chat.id;
 
@@ -574,17 +435,15 @@ bot.on('text', async (ctx, next) => {
       console.error('checkorder error', err);
       await ctx.reply('Произошла ошибка при проверке заказа.');
     }
-    return; // не вызываем next(), чтобы не мешать другим обработчикам
+    return; 
   }
 
-  // Для админа: обработка статусов добавления/удаления
   await handleAdminText(ctx);
   next();
 });
 
 const adminStates = new Map();
 
-// Обновляем функцию обработки текста
 async function handleAdminText(ctx) {
   const chatId = ctx.message.chat.id;
   let currentState = adminStates.get(chatId) || 'Sleep';
@@ -711,8 +570,6 @@ async function handleAdminText(ctx) {
       }
 
       try {
-
-        // Проверяем, существует ли товар
         const product = await knex('my_products')
           .where({
             product_id: productId,
@@ -726,8 +583,6 @@ async function handleAdminText(ctx) {
           return;
         }
 
-
-        // Проверяем, нет ли такого промокода
         const [existingPromo] = await knex('promo_codes')
           .where({
             code,
@@ -740,8 +595,6 @@ async function handleAdminText(ctx) {
           return;
         }
 
-
-        // Создаём промокод
         await knex('promo_codes').insert({
           code,
           product_id: productId,
@@ -804,7 +657,6 @@ async function handleAdminText(ctx) {
   }
 }
 
-// --- Админ-команды ---
 bot.command('cancel', async (ctx) => {
   const chatId = ctx.message.chat.id;
   adminStates.set(chatId, 'Sleep');
@@ -830,7 +682,7 @@ bot.command('showproductdata', async (ctx) => {
       await ctx.reply('Нет данных о продуктах.');
       return;
     }
-    // Лучше не отправлять всю таблицу одним сообщением — можно разбить
+
     await ctx.reply(JSON.stringify(rows, null, 2));
   } catch (err) {
     console.error('showproductdata error', err);
@@ -962,72 +814,6 @@ bot.command('echo', async (ctx) => {
   await ctx.reply(`Ваш chat.id: ${ctx.message.chat.id}`);
 });
 
-// --- Периодическая проверка ордеров ---
-// async function checkOrdersPeriodically() {
-//   try {
-//     const orders = await knex('my_orders')
-//       .whereNot({ status: 'Выполнен' })
-//       .select('order_id', 'address', 'status', 'price', 'product_id', 'created_at');
-
-//     for (const order of orders) {
-//       const balance = await getBalance(order.address);
-
-//       console.log("balance", balance);
-      
-
-//       if (balance.received === null) continue; // ошибка API — пропускаем
-
-//       const paidAmount = balance.received;
-//       const requiredAmount = order.price;
-
-//       // Оплата получена
-//       if (paidAmount >= requiredAmount) {
-//         // Берем товар из my_products по product_id
-//         const [item] = await knex('my_products').where({ product_id: order.product_id });
-//         if (item) {
-//           await knex('my_products')
-//             .where({ product_id: item.product_id, product_data: item.product_data })
-//             .del();
-//           await knex('my_orders')
-//             .where({ order_id: order.order_id })
-//             .update({
-//               status: 'Выполнен',
-//               product_data: item.product_data,
-//             });
-//         }
-//         continue;
-//       }
-
-//       // Есть неподтвержденные средства
-//       if (balance.unconfirmed >= requiredAmount) {
-//         await knex('my_orders')
-//           .where({ order_id: order.order_id })
-//           .update({ status: 'В ожидании подтверждений' });
-//         continue;
-//       }
-
-//       // Проверка истечения времени (90 минут)
-//       const createdAt = new Date(order.created_at);
-//       const now = new Date();
-//       const diffMs = now.getTime() - createdAt.getTime();
-//       const ninetyMinutesMs = 90 * 60 * 1000;
-
-//       if (diffMs >= ninetyMinutesMs) {
-//         await knex('my_orders')
-//           .where({ order_id: order.order_id }) // добавил в обьект status: "Отменен"
-//           .del();
-//       }
-//     }
-//   } catch (err) {
-//     console.error('checkOrdersPeriodically error', err);
-//   }
-// }
-
-
-
-// --- Запуск ---
-
 bot.launch().then(() => {
-  // setInterval(checkOrdersPeriodically, TenMinutes);
   console.log("STARTED");
 });
