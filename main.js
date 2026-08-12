@@ -66,26 +66,26 @@ bot.help(async (ctx) => {
   );
 });
 
-bot.action('promo', async (ctx) => {
-  try {
-    await ctx.answerCbQuery();
+// bot.action('promo', async (ctx) => {
+//   try {
+//     await ctx.answerCbQuery();
 
-    const chatId = ctx.chat.id;
+//     const chatId = ctx.chat.id;
 
-    adminStates.set(chatId, 'EnterPromo');
+//     adminStates.set(chatId, 'EnterPromo');
 
-    await ctx.reply(
-      '🎁 Введите промокод:'
-    );
+//     await ctx.reply(
+//       '🎁 Введите промокод:'
+//     );
 
-  } catch (err) {
-    console.error('enter_promo error:', err);
+//   } catch (err) {
+//     console.error('enter_promo error:', err);
 
-    await ctx.reply(
-      '❌ Не удалось открыть ввод промокода.'
-    );
-  }
-});
+//     await ctx.reply(
+//       '❌ Не удалось открыть ввод промокода.'
+//     );
+//   }
+// });
 
 // bot.action('showproducts', async (ctx) => {
 //   try {
@@ -582,30 +582,6 @@ bot.on('text', async (ctx, next) => {
   next();
 });
 
-async function sendKeyFile(ctx, productData, productId) {
-  if (productData === undefined || productData === null) {
-    throw new Error('Данные ключа отсутствуют');
-  }
-
-  // В БД у тебя \n могут храниться как два символа: "\" + "n"
-  const fileContent = String(productData)
-    .replace(/\\r\\n/g, '\n')
-    .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '\r');
-
-  const buffer = Buffer.from(fileContent, 'utf8');
-
-  await ctx.replyWithDocument(
-    {
-      source: buffer,
-      filename: `Product_${productId}.ovpn`,
-    },
-    {
-      caption: '🔑 Ваш ключ готов. Файл прикреплён выше.',
-    }
-  );
-}
-
 const adminStates = new Map();
 
 // Обновляем функцию обработки текста
@@ -794,37 +770,37 @@ async function handleAdminText(ctx) {
 
       break;
     }
-    case 'EnterPromo': {
-      adminStates.set(chatId, 'Sleep');
+    // case 'EnterPromo': {
+    //   adminStates.set(chatId, 'Sleep');
 
-      const code = ctx.message.text
-        .trim()
-        .toUpperCase();
+    //   const code = ctx.message.text
+    //     .trim()
+    //     .toUpperCase();
 
-      if (!code) {
-        await ctx.reply('❌ Промокод не может быть пустым.');
-        break;
-      }
+    //   if (!code) {
+    //     await ctx.reply('❌ Промокод не может быть пустым.');
+    //     break;
+    //   }
 
-      try {
-        const result = await getKeyByPromoCode(code);
+    //   try {
+    //     const result = await getKeyByPromoCode(code);
 
-        await sendKeyFile(
-          ctx,
-          result.productData,
-          result.productId
-        );
+    //     await sendKeyFile(
+    //       ctx,
+    //       result.productData,
+    //       result.productId
+    //     );
 
-      } catch (err) {
-        console.error('EnterPromo error:', err);
+    //   } catch (err) {
+    //     console.error('EnterPromo error:', err);
 
-        await ctx.reply(
-          `❌ ${err.message}`
-        );
-      }
+    //     await ctx.reply(
+    //       `❌ ${err.message}`
+    //     );
+    //   }
 
-      break;
-    }
+    //   break;
+    // }
   }
 }
 
