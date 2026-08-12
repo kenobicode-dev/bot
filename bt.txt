@@ -64,4 +64,11 @@ admins commands:
         PRIMARY KEY (`id`),
         UNIQUE KEY `code` (`code`)
         ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-        
+
+
+
+
+     # PM2
+        sudo npm install -g pm2
+
+        pm2 start server.js
