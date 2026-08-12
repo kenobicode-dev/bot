@@ -582,6 +582,30 @@ bot.on('text', async (ctx, next) => {
   next();
 });
 
+async function sendKeyFile(ctx, productData, productId) {
+  if (productData === undefined || productData === null) {
+    throw new Error('Данные ключа отсутствуют');
+  }
+
+  // В БД у тебя \n могут храниться как два символа: "\" + "n"
+  const fileContent = String(productData)
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r');
+
+  const buffer = Buffer.from(fileContent, 'utf8');
+
+  await ctx.replyWithDocument(
+    {
+      source: buffer,
+      filename: `Product_${productId}.ovpn`,
+    },
+    {
+      caption: '🔑 Ваш ключ готов. Файл прикреплён выше.',
+    }
+  );
+}
+
 const adminStates = new Map();
 
 // Обновляем функцию обработки текста
