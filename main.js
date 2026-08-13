@@ -11,6 +11,7 @@ const TenMinutes = 10 * 60 * 1000;
 
 let Status = 'Sleep';
 const checkOrderChats = new Set();
+const adminStates = new Map();
 
 const Product = {
   Name: '',
@@ -406,17 +407,69 @@ bot.command('promo', async (ctx) => {
 bot.on('text', async (ctx, next) => {
   const chatId = ctx.message.chat.id;
 
+  // Промокод доступен ВСЕМ пользователям
+  if (adminStates.get(chatId) === 'EnterPromo') {
+    adminStates.set(chatId, 'Sleep');
+
+    const code = ctx.message.text
+      .trim()
+      .toUpperCase();
+
+    if (!code) {
+      await ctx.reply('❌ Промокод не может быть пустым.');
+      return;
+    }
+
+    try {
+      const result = await getKeyByPromoCode(code);
+
+      // Формируем файл так же, как в /promo
+      const fileContent = String(result.productData)
+        .replace(/\\r\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/^"|"$/g, '');
+
+      const fileBuffer = Buffer.from(
+        fileContent,
+        'utf8'
+      );
+
+      await ctx.replyWithDocument(
+        {
+          source: fileBuffer,
+          filename: `key_${result.productId}.ovpn`,
+        },
+        {
+          caption:
+            `🎁 Промокод активирован!\n\n` +
+            `📦 Ваш файл: key_${result.productId}.ovpn`,
+        }
+      );
+
+    } catch (err) {
+      console.error('Promo error:', err);
+
+      await ctx.reply(`❌ ${err.message}`);
+    }
+
+    return;
+  }
+
+  // Проверка заказа
   if (checkOrderChats.has(chatId)) {
     checkOrderChats.delete(chatId);
 
     const orderIdInput = ctx.message.text.trim();
+
     if (!orderIdInput) {
       await ctx.reply('Пожалуйста, введите корректный ID заказа.');
       return;
     }
 
     try {
-      const [order] = await knex('my_orders').where({ order_id: orderIdInput });
+      const [order] = await knex('my_orders')
+        .where({ order_id: orderIdInput });
 
       if (!order) {
         await ctx.reply('Ордер не найден.');
@@ -426,23 +479,62 @@ bot.on('text', async (ctx, next) => {
       await ctx.reply(
         `🌐 CITIZENSVPN\n\n` +
         `📍 ID заказа: ${order.order_id}\n\n` +
-        `${order.status == 'Отменен' ? '🔴' : '🟠' } Статус: ${order.status}\n\n` +
+        `${order.status == 'Отменен' ? '🔴' : '🟠'} Статус: ${order.status}\n\n` +
         `📂 Товар: ${order.product_data}\n\n` +
-        `${order.status == 'Отменен' ? `` : `🧾 Реквизиты: ${order.address}\n\n` }` +
-        `${order.status == 'Отменен' ? `` : `💲 Сумма к оплате: ${order.price} BTC\n\n`}`
+        `${order.status == 'Отменен' ? '' : `🧾 Реквизиты: ${order.address}\n\n`}` +
+        `${order.status == 'Отменен' ? '' : `💲 Сумма к оплате: ${order.price} BTC\n\n`}`
       );
+
     } catch (err) {
       console.error('checkorder error', err);
       await ctx.reply('Произошла ошибка при проверке заказа.');
     }
-    return; 
+
+    return;
   }
 
   await handleAdminText(ctx);
   next();
 });
 
-const adminStates = new Map();
+// bot.on('text', async (ctx, next) => {
+//   const chatId = ctx.message.chat.id;
+
+//   if (checkOrderChats.has(chatId)) {
+//     checkOrderChats.delete(chatId);
+
+//     const orderIdInput = ctx.message.text.trim();
+//     if (!orderIdInput) {
+//       await ctx.reply('Пожалуйста, введите корректный ID заказа.');
+//       return;
+//     }
+
+//     try {
+//       const [order] = await knex('my_orders').where({ order_id: orderIdInput });
+
+//       if (!order) {
+//         await ctx.reply('Ордер не найден.');
+//         return;
+//       }
+
+//       await ctx.reply(
+//         `🌐 CITIZENSVPN\n\n` +
+//         `📍 ID заказа: ${order.order_id}\n\n` +
+//         `${order.status == 'Отменен' ? '🔴' : '🟠' } Статус: ${order.status}\n\n` +
+//         `📂 Товар: ${order.product_data}\n\n` +
+//         `${order.status == 'Отменен' ? `` : `🧾 Реквизиты: ${order.address}\n\n` }` +
+//         `${order.status == 'Отменен' ? `` : `💲 Сумма к оплате: ${order.price} BTC\n\n`}`
+//       );
+//     } catch (err) {
+//       console.error('checkorder error', err);
+//       await ctx.reply('Произошла ошибка при проверке заказа.');
+//     }
+//     return; 
+//   }
+
+//   await handleAdminText(ctx);
+//   next();
+// });
 
 async function handleAdminText(ctx) {
   const chatId = ctx.message.chat.id;
@@ -618,37 +710,6 @@ async function handleAdminText(ctx) {
 
         await ctx.reply(
           '❌ Ошибка при создании промокода.'
-        );
-      }
-
-      break;
-    }
-    case 'EnterPromo': {
-      adminStates.set(chatId, 'Sleep');
-
-      const code = ctx.message.text
-        .trim()
-        .toUpperCase();
-
-      if (!code) {
-        await ctx.reply('❌ Промокод не может быть пустым.');
-        break;
-      }
-
-      try {
-        const result = await getKeyByPromoCode(code);
-
-        await sendKeyFile(
-          ctx,
-          result.productData,
-          result.productId
-        );
-
-      } catch (err) {
-        console.error('EnterPromo error:', err);
-
-        await ctx.reply(
-          `❌ ${err.message}`
         );
       }
 
