@@ -287,6 +287,12 @@ async function getKeyByPromoCode(code) {
 
 bot.on('callback_query', async (ctx) => {
   try {
+    const data = ctx.update.callback_query?.data;
+
+    if (!data || !data.includes('$')) {
+      return;
+    }
+
     const dataParts = ctx.update.callback_query.data.split('$');
     if (dataParts.length !== 2) {
       await ctx.answerCbQuery({ text: 'Некорректные данные кнопки', show_alert: true });
@@ -405,15 +411,20 @@ bot.command('promo', async (ctx) => {
 });
 
 bot.on('text', async (ctx, next) => {
-  const chatId = ctx.message.chat.id;
+  const message = ctx.message;
+
+  if (!message || typeof message.text !== 'string') {
+    return next();
+  }
+
+  const chatId = message.chat.id;
+  const text = message.text;
 
   // Промокод доступен ВСЕМ пользователям
   if (adminStates.get(chatId) === 'EnterPromo') {
     adminStates.set(chatId, 'Sleep');
 
-    const code = ctx.message.text
-      .trim()
-      .toUpperCase();
+    const code = text.trim().toUpperCase();
 
     if (!code) {
       await ctx.reply('❌ Промокод не может быть пустым.');
@@ -423,17 +434,13 @@ bot.on('text', async (ctx, next) => {
     try {
       const result = await getKeyByPromoCode(code);
 
-      // Формируем файл так же, как в /promo
       const fileContent = String(result.productData)
         .replace(/\\r\\n/g, '\n')
         .replace(/\\n/g, '\n')
         .replace(/\\r/g, '\r')
         .replace(/^"|"$/g, '');
 
-      const fileBuffer = Buffer.from(
-        fileContent,
-        'utf8'
-      );
+      const fileBuffer = Buffer.from(fileContent, 'utf8');
 
       await ctx.replyWithDocument(
         {
@@ -449,7 +456,6 @@ bot.on('text', async (ctx, next) => {
 
     } catch (err) {
       console.error('Promo error:', err);
-
       await ctx.reply(`❌ ${err.message}`);
     }
 
@@ -460,7 +466,7 @@ bot.on('text', async (ctx, next) => {
   if (checkOrderChats.has(chatId)) {
     checkOrderChats.delete(chatId);
 
-    const orderIdInput = ctx.message.text.trim();
+    const orderIdInput = text.trim();
 
     if (!orderIdInput) {
       await ctx.reply('Пожалуйста, введите корректный ID заказа.');
@@ -537,6 +543,10 @@ bot.on('text', async (ctx, next) => {
 // });
 
 async function handleAdminText(ctx) {
+  if (!ctx.message || typeof ctx.message.text !== 'string') {
+    return;
+  }
+
   const chatId = ctx.message.chat.id;
   let currentState = adminStates.get(chatId) || 'Sleep';
 
