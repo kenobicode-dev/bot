@@ -60,32 +60,32 @@ bot.start(async (ctx) => {
 
 bot.help(async (ctx) => {
   await ctx.reply(
-    `/promo — Ввести промокод`
+    // `/promo — Ввести промокод`
     // `/showproducts — Просмотр всех продуктов\n` +
     // `/checkorder — Проверить статус заказа`
   );
 });
 
-bot.action('promo', async (ctx) => {
-  try {
-    await ctx.answerCbQuery();
+// bot.action('promo', async (ctx) => {
+//   try {
+//     await ctx.answerCbQuery();
 
-    const chatId = ctx.chat.id;
+//     const chatId = ctx.chat.id;
 
-    adminStates.set(chatId, 'EnterPromo');
+//     adminStates.set(chatId, 'EnterPromo');
 
-    await ctx.reply(
-      '🎁 Введите промокод:'
-    );
+//     await ctx.reply(
+//       '🎁 Введите промокод:'
+//     );
 
-  } catch (err) {
-    console.error('enter_promo error:', err);
+//   } catch (err) {
+//     console.error('enter_promo error:', err);
 
-    await ctx.reply(
-      '❌ Не удалось открыть ввод промокода.'
-    );
-  }
-});
+//     await ctx.reply(
+//       '❌ Не удалось открыть ввод промокода.'
+//     );
+//   }
+// });
 
 // bot.action('showproducts', async (ctx) => {
 //   try {
@@ -118,6 +118,54 @@ bot.action('promo', async (ctx) => {
 //     await ctx.reply('‼️Ошибка при получении списка продуктов.‼️');
 //   }
 // });
+
+bot.action('promo', async (ctx) => {
+  try {
+    const args = ctx.message.text.trim().split(/\s+/);
+
+    if (args.length < 2) {
+      await ctx.reply(
+        '🎁 Использование:\n\n' +
+        '/promo ПРОМОКОД'
+      );
+      return;
+    }
+
+    const code = args[1];
+
+    const result = await getKeyByPromoCode(code);
+
+    // Формируем TXT-файл
+    const fileContent = String(result.productData)
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r');
+
+    const fileBuffer = Buffer.from(
+      fileContent,
+      'utf8'
+    );
+
+    await ctx.replyWithDocument(
+      {
+        source: fileBuffer,
+        filename: `key_${result.productId}.ovpn`,
+      },
+      {
+        caption:
+          `🎁 Промокод активирован!\n\n` +
+          `📦 Ваш файл: key_${result.productId}.ovpn`,
+      }
+    );
+
+  } catch (err) {
+    console.error('promo error:', err);
+
+    await ctx.reply(
+      `❌ ${err.message}`
+    );
+  }
+});
 
 bot.action(/^check_order_(\w+)$/, async (ctx) => {
   try {
@@ -794,37 +842,37 @@ async function handleAdminText(ctx) {
 
       break;
     }
-    case 'EnterPromo': {
-      adminStates.set(chatId, 'Sleep');
+    // case 'EnterPromo': {
+    //   adminStates.set(chatId, 'Sleep');
 
-      const code = ctx.message.text
-        .trim()
-        .toUpperCase();
+    //   const code = ctx.message.text
+    //     .trim()
+    //     .toUpperCase();
 
-      if (!code) {
-        await ctx.reply('❌ Промокод не может быть пустым.');
-        break;
-      }
+    //   if (!code) {
+    //     await ctx.reply('❌ Промокод не может быть пустым.');
+    //     break;
+    //   }
 
-      try {
-        const result = await getKeyByPromoCode(code);
+    //   try {
+    //     const result = await getKeyByPromoCode(code);
 
-        await sendKeyFile(
-          ctx,
-          result.productData,
-          result.productId
-        );
+    //     await sendKeyFile(
+    //       ctx,
+    //       result.productData,
+    //       result.productId
+    //     );
 
-      } catch (err) {
-        console.error('EnterPromo error:', err);
+    //   } catch (err) {
+    //     console.error('EnterPromo error:', err);
 
-        await ctx.reply(
-          `❌ ${err.message}`
-        );
-      }
+    //     await ctx.reply(
+    //       `❌ ${err.message}`
+    //     );
+    //   }
 
-      break;
-    }
+    //   break;
+    // }
   }
 }
 
