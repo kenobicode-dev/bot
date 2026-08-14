@@ -335,22 +335,73 @@ async function handleAdminText(ctx) {
     }
     case 'AddProductData': {
       adminStates.set(chatId, 'Sleep');
+
       const parts = ctx.message.text.split('$');
+
       if (parts.length !== 2) {
-        await ctx.reply('Формат: ID$ProductData. Например: 3$email:password');
+        await ctx.reply(
+          '❌ Неверный формат.\n\n' +
+          'Используйте:\n' +
+          'ProductData$Количество\n\n' +
+          'Например:\n' +
+          'client.ovpn$10'
+        );
         return;
       }
-      const [productId, productData] = parts;
-      try {
-        await knex('my_products').insert({
-          product_id: productId,
-          product_data: JSON.stringify(productData)
-        });
-        await ctx.reply('Продукт успешно добавлен в БД.');
-      } catch (err) {
-        console.error('AddProductData error', err);
-        await ctx.reply('Во время добавления в БД произошла ошибка.');
+
+      const productData = parts[0];
+      const count = Number(parts[1].trim());
+
+      if (!productData) {
+        await ctx.reply('❌ ProductData не может быть пустым.');
+        return;
       }
+
+      if (!Number.isInteger(count) || count < 1 || count > 10000) {
+        await ctx.reply(
+          '❌ Количество должно быть целым числом от 1 до 10000.'
+        );
+        return;
+      }
+
+      try {
+        await knex.transaction(async (trx) => {
+          // Получаем максимальный существующий product_id
+          const result = await trx('my_products')
+            .max('product_id as maxProductId')
+            .first();
+
+          let nextProductId = Number(result.maxProductId) || 0;
+
+          const rows = [];
+
+          for (let i = 0; i < count; i++) {
+            nextProductId++;
+
+            rows.push({
+              product_id: nextProductId,
+              product_data: productData
+            });
+          }
+
+          await trx('my_products').insert(rows);
+        });
+
+        await ctx.reply(
+          `✅ Продукты успешно добавлены.\n\n` +
+          `🔑 Ключ: ${productData}\n` +
+          `🔢 Количество: ${count}\n\n` +
+          `🆔 Product ID созданы автоматически.`
+        );
+
+      } catch (err) {
+        console.error('AddProductData error:', err);
+
+        await ctx.reply(
+          '❌ Ошибка при добавлении продуктов в БД.'
+        );
+      }
+
       break;
     }
     case 'DelProductData': {
@@ -484,9 +535,18 @@ bot.command('addproductdata', async (ctx) => {
   if (ctx.message.chat.id !== conf.adminChatId) {
     return;
   }
-  const chatId = ctx.message.chat.id;
-  adminStates.set(chatId, 'AddProductData');
-  await ctx.reply('Отправьте данные для добавления в формате: ID$ProductData\nНапример: 3$email:password');
+
+  adminStates.set(ctx.message.chat.id, 'AddProductData');
+
+  await ctx.reply(
+    '📦 Добавление продуктов\n\n' +
+    'Формат:\n' +
+    'ProductData$Количество\n\n' +
+    'Пример:\n' +
+    'client.ovpn$10\n\n' +
+    'Будет создано 10 продуктов\n' +
+    'с одинаковым ключом, но разными Product ID.'
+  );
 });
 
 // bot.command('showproductdata', async (ctx) => {
