@@ -1,4 +1,3 @@
-
 import {conf} from './conf.js';
 import crypto from 'crypto';
 import { Telegraf, Markup } from 'telegraf';
@@ -35,9 +34,8 @@ bot.start(async (ctx) => {
     await ctx.reply(
       `🌐 CITIZENSVPN\n\n` +
       `Добро пожаловать, ${name}!\n` +
-      `Рады приветствовать тебя в SITIZENSVPN.\n\n` +
-      `Рады приветствовать тебя в SITIZENSVPN.\n\n` +
-      `SITIZENSVPN - Свободная сеть!`,
+      `Рады приветствовать в CITIZENSVPN.\n\n` +
+      `Бот выдачи файлов конфигурации OpenVPN по промокоду.\n\n`,
       Markup.inlineKeyboard([
         Markup.button.callback('Ввести промокод', 'promo'),
       ]),
@@ -74,117 +72,6 @@ bot.action('promo', async (ctx) => {
   }
 });
 
-bot.action(/^check_order_(\w+)$/, async (ctx) => {
-  try {
-    await ctx.answerCbQuery();
-
-    const orderId = ctx.match[1];
-    const [order] = await knex('my_orders').where({ order_id: orderId });
-
-    if (!order) {
-      return await ctx.reply('‼️Заказ не найден.‼️');
-    }
-
-    // Добавляем кнопку отмены
-    await ctx.reply(
-      `🌐 CITIZENSVPN\n\n` +
-      `📍 ID заказа: ${order.order_id}\n\n` +
-      `${order.status == 'Отменен' ? '🔴' : '🟠' } Статус: ${order.status}\n\n` +
-      `📂 Товар: ${order.product_data}\n\n` +
-      `${order.status == 'Отменен' ? `` : `🧾 Реквизиты: ${order.address}\n\n` }` +
-      `${order.status == 'Отменен' ? `` : `💲 Сумма к оплате: ${order.price} BTC\n\n`}`,
-      
-      Markup.inlineKeyboard([
-        Markup.button.callback('❓ Проверить заказ', `check_order_${order.order_id}`, order.status == "Отменен" ? true : false),
-        Markup.button.callback('❌ Отменить заказ', `cancel_order_${order.order_id}`, order.status == "Отменен" ? true : false)
-      ])
-    );
-  } catch (err) {
-    console.error('‼️Ошибка проверки заказа‼️', err);
-    await ctx.reply('‼️Произошла ошибка.‼️');
-  }
-});
-
-
-bot.action(/^cancel_order_(\w+)$/, async (ctx) => {
-  try {
-    await ctx.answerCbQuery();
-
-    const orderId = ctx.match[1];
-
-    // Проверяем существование заказа
-    const [order] = await knex('my_orders').where({ order_id: orderId });
-
-    if (!order) {
-      return await ctx.reply('‼️Заказ не найден или уже обработан.‼️');
-    }
-
-    // Проверяем, можно ли отменить заказ
-    if (order.status === 'Выполнен') {
-      return await ctx.reply('‼️Невозможно отменить выполненный заказ.‼️');
-    }
-
-    // Отменяем заказ
-    await knex('my_orders')
-      .where({ order_id: orderId })
-      .update({
-        status: 'Отменен',
-        product_data: 'Заказ отменен'
-      });
-
-    await ctx.reply('‼️Заказ успешно отменен.‼️');
-  } catch (err) {
-    console.error('‼️Ошибка отмены заказа‼️', err);
-    await ctx.reply('‼️Произошла ошибка при отмене заказа.‼️');
-  }
-});
-
-
-async function calcPrice(priceUsd) {
-  try {
-    const response = await axios.get(
-      'https://pro-api.coinmarketcap.com/v2/tools/price-conversion',
-      {
-        params: {
-          amount: priceUsd,
-          convert_id: 1, // BTC
-          id: 2781,     // USD
-        },
-        headers: {
-          'Accepts': 'application/json',
-          'X-CMC_PRO_API_KEY': conf.cmc,
-        }
-      }
-    );
-
-    const btcPrice = response.data.data.quote['1'].price;
-    return Number(btcPrice.toFixed(8));
-  } catch (err) {
-    console.error('calcPrice error', err);
-    throw new Error('Ошибка при расчете цены BTC');
-  }
-}
-
-async function getBalance(address) {
-  try {
-    const response = await axios.get(`https://chain.api.btc.com/v3/address/${address}`);
-    const data = response.data.data;
-    const factor = 0.00000001;
-
-    return {
-      received: Number((data.received * factor).toFixed(8)),
-      unconfirmed: Number((data.unconfirmed_received * factor).toFixed(8)),
-    };
-  } catch (err) {
-    console.error('getBalance error', err);
-    return { received: null, unconfirmed: null };
-  }
-}
-
-function generateOrderId() {
-  return crypto.randomBytes(16).toString('hex');
-}
-
 async function getPromoCode(code, trx = knex) {
   const normalizedCode = String(code)
     .trim()
@@ -216,7 +103,7 @@ async function getKeyByPromoCode(code) {
     .toUpperCase();
 
   if (!normalizedCode) {
-    throw new Error('Промокод не указан');
+    throw new Error('Промокод не указан!');
   }
 
   return await knex.transaction(async (trx) => {
@@ -236,7 +123,7 @@ async function getKeyByPromoCode(code) {
 
     if (!promo) {
       throw new Error(
-        'Промокод недействителен, истёк или уже использован'
+        'Промокод недействителен!'
       );
     }
 
@@ -284,83 +171,6 @@ async function getKeyByPromoCode(code) {
     };
   });
 }
-
-bot.on('callback_query', async (ctx) => {
-  try {
-    const data = ctx.update.callback_query?.data;
-
-    if (!data || !data.includes('$')) {
-      return;
-    }
-
-    const dataParts = ctx.update.callback_query.data.split('$');
-    if (dataParts.length !== 2) {
-      await ctx.answerCbQuery({ text: 'Некорректные данные кнопки', show_alert: true });
-      return;
-    }
-
-    const [productId, priceUsdStr] = dataParts;
-    const priceUsd = Number(priceUsdStr);
-    if (!Number.isFinite(priceUsd)) {
-      throw new Error('Некорректная цена');
-    }
-
-    const summaBtc = await calcPrice(priceUsd);
-
-    // Получаем все существующие BTC-адреса из БД
-    const existingRows = await knex('my_orders').select('address');
-    const existingAddresses = existingRows.map((r) => r.address);
-
-    let didi = -1;
-    let t_address;
-
-    do {
-      didi++;
-      t_address = process.env.BCAD; // ПРИДУМАТЬ !!!
-    } while (existingAddresses.includes(t_address));
-
-    const orderId = generateOrderId();
-    const now = new Date();
-
-    const Arra = {
-      order_id: orderId,
-      address: t_address,
-      status: 'Ожидает оплаты',
-      price: summaBtc,
-      product_id: productId,
-      created_at: now,
-      product_data: 'Будет доступно после оплаты',
-    };
-
-    await knex('my_orders').insert(Arra);
-    await ctx.answerCbQuery();
-
-    await ctx.reply(
-      `🌐 CITIZENSVPN\n\n` +
-      `🕑 Ваш заказ находится в обработке\n\n` +
-      `📍 ID заказа: ${orderId}\n\n` +
-      `🟠 Статус: Ожидает оплаты\n\n` +
-      `‼️ Время на оплату: 90 минут\n` +
-      `‼️Через 90 минут заказ будет ликвидирован\n\n` +
-      `🧾 Реквизиты для оплаты BTC: ${t_address}\n\n` +
-      `💲 Сумма к оплате: ${summaBtc} BTC\n\n` +
-      `🔄 Вы можете проверить статус вашего заказа.`,
-      Markup.inlineKeyboard([
-        Markup.button.callback('❓ Проверить заказ', `check_order_${orderId}`),
-        Markup.button.callback('❌ Отменить заказ', `cancel_order_${orderId}`)
-      ])
-    );
-  } catch (err) {
-    console.error('callback_query error', err);
-    if (ctx.update && ctx.update.callback_query) {
-      try {
-        await ctx.answerCbQuery({ text: 'Произошла ошибка. Попробуйте позднее.', show_alert: true });
-      } catch (e) {
-        console.warn('Не удалось отправить answerCbQuery', e);
-      }
-    }
-  }
-});
 
 bot.command('promo', async (ctx) => {
   try {
@@ -462,85 +272,9 @@ bot.on('text', async (ctx, next) => {
     return;
   }
 
-  // Проверка заказа
-  if (checkOrderChats.has(chatId)) {
-    checkOrderChats.delete(chatId);
-
-    const orderIdInput = text.trim();
-
-    if (!orderIdInput) {
-      await ctx.reply('Пожалуйста, введите корректный ID заказа.');
-      return;
-    }
-
-    try {
-      const [order] = await knex('my_orders')
-        .where({ order_id: orderIdInput });
-
-      if (!order) {
-        await ctx.reply('Ордер не найден.');
-        return;
-      }
-
-      await ctx.reply(
-        `🌐 CITIZENSVPN\n\n` +
-        `📍 ID заказа: ${order.order_id}\n\n` +
-        `${order.status == 'Отменен' ? '🔴' : '🟠'} Статус: ${order.status}\n\n` +
-        `📂 Товар: ${order.product_data}\n\n` +
-        `${order.status == 'Отменен' ? '' : `🧾 Реквизиты: ${order.address}\n\n`}` +
-        `${order.status == 'Отменен' ? '' : `💲 Сумма к оплате: ${order.price} BTC\n\n`}`
-      );
-
-    } catch (err) {
-      console.error('checkorder error', err);
-      await ctx.reply('Произошла ошибка при проверке заказа.');
-    }
-
-    return;
-  }
-
   await handleAdminText(ctx);
   next();
 });
-
-// bot.on('text', async (ctx, next) => {
-//   const chatId = ctx.message.chat.id;
-
-//   if (checkOrderChats.has(chatId)) {
-//     checkOrderChats.delete(chatId);
-
-//     const orderIdInput = ctx.message.text.trim();
-//     if (!orderIdInput) {
-//       await ctx.reply('Пожалуйста, введите корректный ID заказа.');
-//       return;
-//     }
-
-//     try {
-//       const [order] = await knex('my_orders').where({ order_id: orderIdInput });
-
-//       if (!order) {
-//         await ctx.reply('Ордер не найден.');
-//         return;
-//       }
-
-//       await ctx.reply(
-//         `🌐 CITIZENSVPN\n\n` +
-//         `📍 ID заказа: ${order.order_id}\n\n` +
-//         `${order.status == 'Отменен' ? '🔴' : '🟠' } Статус: ${order.status}\n\n` +
-//         `📂 Товар: ${order.product_data}\n\n` +
-//         `${order.status == 'Отменен' ? `` : `🧾 Реквизиты: ${order.address}\n\n` }` +
-//         `${order.status == 'Отменен' ? `` : `💲 Сумма к оплате: ${order.price} BTC\n\n`}`
-//       );
-//     } catch (err) {
-//       console.error('checkorder error', err);
-//       await ctx.reply('Произошла ошибка при проверке заказа.');
-//     }
-//     return; 
-//   }
-
-//   await handleAdminText(ctx);
-//   next();
-// });
 
 async function handleAdminText(ctx) {
   if (!ctx.message || typeof ctx.message.text !== 'string') {
@@ -601,22 +335,73 @@ async function handleAdminText(ctx) {
     }
     case 'AddProductData': {
       adminStates.set(chatId, 'Sleep');
+
       const parts = ctx.message.text.split('$');
+
       if (parts.length !== 2) {
-        await ctx.reply('Формат: ID$ProductData. Например: 3$email:password');
+        await ctx.reply(
+          '❌ Неверный формат.\n\n' +
+          'Используйте:\n' +
+          'ProductData$Количество\n\n' +
+          'Например:\n' +
+          'client.ovpn$10'
+        );
         return;
       }
-      const [productId, productData] = parts;
-      try {
-        await knex('my_products').insert({
-          product_id: productId,
-          product_data: JSON.stringify(productData)
-        });
-        await ctx.reply('Продукт успешно добавлен в БД.');
-      } catch (err) {
-        console.error('AddProductData error', err);
-        await ctx.reply('Во время добавления в БД произошла ошибка.');
+
+      const productData = parts[0];
+      const count = Number(parts[1].trim());
+
+      if (!productData) {
+        await ctx.reply('❌ ProductData не может быть пустым.');
+        return;
       }
+
+      if (!Number.isInteger(count) || count < 1 || count > 10000) {
+        await ctx.reply(
+          '❌ Количество должно быть целым числом от 1 до 10000.'
+        );
+        return;
+      }
+
+      try {
+        await knex.transaction(async (trx) => {
+          // Получаем максимальный существующий product_id
+          const result = await trx('my_products')
+            .max('product_id as maxProductId')
+            .first();
+
+          let nextProductId = Number(result.maxProductId) || 0;
+
+          const rows = [];
+
+          for (let i = 0; i < count; i++) {
+            nextProductId++;
+
+            rows.push({
+              product_id: nextProductId,
+              product_data: productData
+            });
+          }
+
+          await trx('my_products').insert(rows);
+        });
+
+        await ctx.reply(
+          `✅ Продукты успешно добавлены.\n\n` +
+          `🔑 Ключ: ${productData}\n` +
+          `🔢 Количество: ${count}\n\n` +
+          `🆔 Product ID созданы автоматически.`
+        );
+
+      } catch (err) {
+        console.error('AddProductData error:', err);
+
+        await ctx.reply(
+          '❌ Ошибка при добавлении продуктов в БД.'
+        );
+      }
+
       break;
     }
     case 'DelProductData': {
@@ -729,45 +514,137 @@ async function handleAdminText(ctx) {
 }
 
 bot.command('cancel', async (ctx) => {
+  if (ctx.message.chat.id !== conf.adminChatId) {
+    return;
+  }
   const chatId = ctx.message.chat.id;
   adminStates.set(chatId, 'Sleep');
   await ctx.reply('Все текущие операции были отменены.');
 });
 
 bot.command('addproduct', async (ctx) => {
+  if (ctx.message.chat.id !== conf.adminChatId) {
+    return;
+  }
   const chatId = ctx.message.chat.id;
   adminStates.set(chatId, 'AddProduct_N');
   await ctx.reply('Укажите название товара:');
 });
 
 bot.command('addproductdata', async (ctx) => {
-  const chatId = ctx.message.chat.id;
-  adminStates.set(chatId, 'AddProductData');
-  await ctx.reply('Отправьте данные для добавления в формате: ID$ProductData\nНапример: 3$email:password');
+  if (ctx.message.chat.id !== conf.adminChatId) {
+    return;
+  }
+
+  adminStates.set(ctx.message.chat.id, 'AddProductData');
+
+  await ctx.reply(
+    '📦 Добавление продуктов\n\n' +
+    'Формат:\n' +
+    'ProductData$Количество\n\n' +
+    'Пример:\n' +
+    'client.ovpn$10\n\n' +
+    'Будет создано 10 продуктов\n' +
+    'с одинаковым ключом, но разными Product ID.'
+  );
 });
+
+// bot.command('showproductdata', async (ctx) => {
+//   try {
+//     if (ctx.message.chat.id !== conf.adminChatId) {
+//       return;
+//     }
+//     const rows = await knex('my_products').select();
+//     if (rows.length === 0) {
+//       await ctx.reply('Нет данных о продуктах.');
+//       return;
+//     }
+
+//     await ctx.reply(JSON.stringify(rows, null, 2));
+//   } catch (err) {
+//     console.error('showproductdata error', err);
+//     await ctx.reply('Произошла ошибка.');
+//   }
+// });
+
+// bot.command('showproductdata', async (ctx) => {
+//   try {
+//     if (ctx.message.chat.id !== conf.adminChatId) {
+//       return;
+//     }
+
+//     const rows = await knex('my_products')
+//       .select('id', 'product_id');
+
+//     if (rows.length === 0) {
+//       await ctx.reply('Нет данных о продуктах.');
+//       return;
+//     }
+
+//     await ctx.reply(
+//       `📦 Всего ключей: ${rows.length}\n\n` +
+//       rows.map(row => `ID: ${row.id} | Product ID: ${row.product_id}`).join('\n')
+//     );
+
+//   } catch (err) {
+//     console.error('showproductdata error:', err);
+//     await ctx.reply('Произошла ошибка.');
+//   }
+// });
 
 bot.command('showproductdata', async (ctx) => {
   try {
+    if (ctx.message.chat.id !== conf.adminChatId) {
+      return;
+    }
+
     const rows = await knex('my_products').select();
+
     if (rows.length === 0) {
       await ctx.reply('Нет данных о продуктах.');
       return;
     }
 
-    await ctx.reply(JSON.stringify(rows, null, 2));
+    const content = rows
+      .map(row =>
+        `ID: ${row.id}\n` +
+        `Product ID: ${row.product_id}\n` +
+        `Product Data:\n${row.product_data}\n` +
+        `${'='.repeat(50)}\n`
+      )
+      .join('\n');
+
+    const buffer = Buffer.from(content, 'utf8');
+
+    await ctx.replyWithDocument(
+      {
+        source: buffer,
+        filename: 'product_data.txt',
+      },
+      {
+        caption: `📦 Всего ключей: ${rows.length}`,
+      }
+    );
+
   } catch (err) {
-    console.error('showproductdata error', err);
+    console.error('showproductdata error:', err);
     await ctx.reply('Произошла ошибка.');
   }
 });
 
 bot.command('delproductdata', async (ctx) => {
+  if (ctx.message.chat.id !== conf.adminChatId) {
+    return;
+  }
   const chatId = ctx.message.chat.id;
   adminStates.set(chatId, 'DelProductData');
   await ctx.reply('Отправьте данные о продукте для удаления в формате: ID$ProductData');
 });
 
 bot.command('delproduct', async (ctx) => {
+  if (ctx.message.chat.id !== conf.adminChatId) {
+    return;
+  }
   const chatId = ctx.message.chat.id;
   adminStates.set(chatId, 'DelProduct');
   await ctx.reply('Отправьте ID продукта, который хотите удалить:');
@@ -775,7 +652,6 @@ bot.command('delproduct', async (ctx) => {
 
 bot.command('addpromo', async (ctx) => {
   const chatId = ctx.message.chat.id;
-
   if (chatId !== conf.adminChatId) {
     return;
   }
@@ -832,6 +708,50 @@ bot.command('showpromos', async (ctx) => {
   }
 });
 
+bot.command('showactivepromos', async (ctx) => {
+  if (ctx.message.chat.id !== conf.adminChatId) {
+    return;
+  }
+
+  try {
+    const promos = await knex('promo_codes')
+      .where('is_active', true)
+      .whereRaw('used_count < max_uses')
+      .where(function () {
+        this.whereNull('expires_at')
+          .orWhere('expires_at', '>', knex.fn.now());
+      })
+      .orderBy('id', 'desc');
+
+    if (promos.length === 0) {
+      await ctx.reply(
+        '🎟 Активных промокодов нет.'
+      );
+      return;
+    }
+
+    let message = '🎟 АКТИВНЫЕ ПРОМОКОДЫ\n\n';
+
+    for (const promo of promos) {
+      message +=
+        `━━━━━━━━━━━━━━\n` +
+        `🎟 ${promo.code}\n` +
+        `📦 Product ID: ${promo.product_id}\n` +
+        `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
+        `⏰ Истекает: ${promo.expires_at || 'нет'}\n`;
+    }
+
+    await ctx.reply(message);
+
+  } catch (err) {
+    console.error('showpromos error:', err);
+
+    await ctx.reply(
+      '❌ Ошибка при получении активных промокодов.'
+    );
+  }
+});
+
 bot.command('delpromo', async (ctx) => {
   if (ctx.message.chat.id !== conf.adminChatId) {
     return;
@@ -882,6 +802,9 @@ bot.command('delpromo', async (ctx) => {
 });
 
 bot.command('echo', async (ctx) => {
+  if (ctx.message.chat.id !== conf.adminChatId) {
+    return;
+  }
   await ctx.reply(`Ваш chat.id: ${ctx.message.chat.id}`);
 });
 
