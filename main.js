@@ -60,7 +60,7 @@ bot.action('promo', async (ctx) => {
     adminStates.set(chatId, 'EnterPromo');
 
     await ctx.reply(
-      '🎁 Введите промокод:'
+      '🎟 Введите промокод:'
     );
 
   } catch (err) {
