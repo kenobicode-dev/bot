@@ -860,6 +860,260 @@ bot.command('echo', async (ctx) => {
   await ctx.reply(`Ваш chat.id: ${ctx.message.chat.id}`);
 });
 
+bot.command('adminp13qh7', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    return;
+  }
+
+  await ctx.reply(
+    '🛠 Админ-панель',
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback('➕ Добавить товар', 'admin_addproduct'),
+        Markup.button.callback('📦 Добавить ключи', 'admin_addproductdata'),
+      ],
+      [
+        Markup.button.callback('🎟 Добавить промокод', 'admin_addpromo'),
+        Markup.button.callback('📋 Промокоды', 'admin_showpromos'),
+      ],
+      [
+        Markup.button.callback('📋 Активные промокоды', 'admin_showactivepromos'),
+        Markup.button.callback('📦 Ключи', 'admin_showproductdata'),
+      ],
+      [
+        Markup.button.callback('🗑 Удалить ключ', 'admin_delproductdata'),
+        Markup.button.callback('🗑 Удалить промокод', 'admin_delpromo'),
+      ],
+      [
+        Markup.button.callback('❌ Отмена', 'admin_cancel'),
+      ],
+    ])
+  );
+});
+
+bot.action('admin_addproduct', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  adminStates.set(ctx.chat.id, 'AddProduct_N');
+
+  await ctx.reply('Укажите название товара:');
+});
+
+
+bot.action('admin_addproductdata', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  adminStates.set(ctx.chat.id, 'AddProductData');
+
+  await ctx.reply(
+    '📦 Добавление продуктов и промокодов\n\n' +
+    'Формат:\n' +
+    'ProductData$Количество\n\n' +
+    'Например:\n' +
+    'client.ovpn$10'
+  );
+});
+
+
+bot.action('admin_addpromo', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  adminStates.set(ctx.chat.id, 'AddPromo');
+
+  await ctx.reply(
+    '🎟 Создание промокода\n\n' +
+    'Формат:\n' +
+    'CODE$PRODUCT_ID$MAX_USES$EXPIRES_AT\n\n' +
+    'Например:\n' +
+    'FREE-12345$3$2026-12-31 23:59:59'
+  );
+});
+
+
+bot.action('admin_showpromos', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  // Можно вызвать ту же логику, что сейчас находится в /showpromos
+  try {
+    const promos = await knex('promo_codes')
+      .orderBy('id', 'desc');
+
+    if (promos.length === 0) {
+      await ctx.reply('🎟 Промокодов пока нет.');
+      return;
+    }
+
+    let message = '🎟 ПРОМОКОДЫ\n\n';
+
+    for (const promo of promos) {
+      message +=
+        `━━━━━━━━━━━━━━\n` +
+        `🎟 ${promo.code}\n` +
+        `📦 Product ID: ${promo.product_id}\n` +
+        `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
+        `⏰ Истекает: ${promo.expires_at || 'нет'}\n` +
+        `📌 Статус: ${promo.is_active ? 'Активен' : 'Неактивен'}\n`;
+    }
+
+    await ctx.reply(message);
+
+  } catch (err) {
+    console.error(err);
+    await ctx.reply('❌ Ошибка при получении промокодов.');
+  }
+});
+
+
+bot.action('admin_showactivepromos', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  try {
+    const promos = await knex('promo_codes')
+      .where('is_active', true)
+      .whereRaw('used_count < max_uses')
+      .where(function () {
+        this.whereNull('expires_at')
+          .orWhere('expires_at', '>', knex.fn.now());
+      })
+      .orderBy('id', 'desc');
+
+    if (promos.length === 0) {
+      await ctx.reply('🎟 Активных промокодов нет.');
+      return;
+    }
+
+    let message = '🎟 АКТИВНЫЕ ПРОМОКОДЫ\n\n';
+
+    for (const promo of promos) {
+      message +=
+        `━━━━━━━━━━━━━━\n` +
+        `🎟 ${promo.code}\n` +
+        `📦 Product ID: ${promo.product_id}\n` +
+        `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
+        `⏰ Истекает: ${promo.expires_at || 'нет'}\n`;
+    }
+
+    await ctx.reply(message);
+
+  } catch (err) {
+    console.error(err);
+    await ctx.reply('❌ Ошибка при получении активных промокодов.');
+  }
+});
+
+
+bot.action('admin_showproductdata', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  try {
+    const rows = await knex('my_products').select();
+
+    if (rows.length === 0) {
+      await ctx.reply('Нет данных о продуктах.');
+      return;
+    }
+
+    const content = rows
+      .map(row =>
+        `ID: ${row.id}\n` +
+        `Product ID: ${row.product_id}\n` +
+        `Product Data:\n${row.product_data}\n` +
+        `${'='.repeat(50)}\n`
+      )
+      .join('\n');
+
+    await ctx.replyWithDocument(
+      {
+        source: Buffer.from(content, 'utf8'),
+        filename: 'product_data.txt',
+      },
+      {
+        caption: `📦 Всего ключей: ${rows.length}`,
+      }
+    );
+
+  } catch (err) {
+    console.error(err);
+    await ctx.reply('❌ Ошибка.');
+  }
+});
+
+
+bot.action('admin_delproductdata', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  adminStates.set(ctx.chat.id, 'DelProductData');
+
+  await ctx.reply(
+    '🗑 Отправьте данные для удаления:\n\n' +
+    'ID$ProductData'
+  );
+});
+
+
+bot.action('admin_delpromo', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  await ctx.reply(
+    '🗑 Для удаления промокода используйте:\n\n' +
+    '/delpromo CODE'
+  );
+});
+
+
+bot.action('admin_cancel', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  adminStates.set(ctx.chat.id, 'Sleep');
+
+  await ctx.reply('❌ Все текущие операции отменены.');
+});
+
 bot.launch().then(() => {
   console.log("STARTED");
 });
