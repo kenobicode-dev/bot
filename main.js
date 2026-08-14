@@ -349,7 +349,7 @@ async function handleAdminText(ctx) {
         return;
       }
 
-      const productData = parts[0];
+      const productData = parts[0].trim();
       const count = Number(parts[1].trim());
 
       if (!productData) {
@@ -365,40 +365,89 @@ async function handleAdminText(ctx) {
       }
 
       try {
-        await knex.transaction(async (trx) => {
-          // Получаем максимальный существующий product_id
-          const result = await trx('my_products')
+        const result = await knex.transaction(async (trx) => {
+
+          // Получаем максимальный product_id
+          const maxRow = await trx('my_products')
             .max('product_id as maxProductId')
             .first();
 
-          let nextProductId = Number(result.maxProductId) || 0;
+          let nextProductId = Number(maxRow?.maxProductId) || 0;
 
-          const rows = [];
+          const products = [];
+          const promos = [];
 
           for (let i = 0; i < count; i++) {
             nextProductId++;
 
-            rows.push({
+            // Генерируем уникальный промокод
+            let promoCode;
+            let exists = true;
+
+            while (exists) {
+              promoCode =
+                'CVPN-' +
+                crypto.randomBytes(5)
+                  .toString('hex')
+                  .toUpperCase();
+
+              const existing = await trx('promo_codes')
+                .where({ code: promoCode })
+                .first();
+
+              exists = !!existing;
+            }
+
+            products.push({
               product_id: nextProductId,
               product_data: productData
             });
+
+            promos.push({
+              code: promoCode,
+              product_id: nextProductId,
+              max_uses: 1,
+              used_count: 0,
+              expires_at: null,
+              is_active: true
+            });
           }
 
-          await trx('my_products').insert(rows);
+          // Сначала создаём продукты
+          await trx('my_products').insert(products);
+
+          // Затем промокоды
+          await trx('promo_codes').insert(promos);
+
+          return {
+            products,
+            promos
+          };
         });
 
-        await ctx.reply(
-          `✅ Продукты успешно добавлены.\n\n` +
-          `🔑 Ключ: ${productData}\n` +
-          `🔢 Количество: ${count}\n\n` +
-          `🆔 Product ID созданы автоматически.`
-        );
+        let message =
+          `✅ Успешно создано: ${result.products.length} продуктов\n\n` +
+          `🔑 Общий ключ:\n${productData}\n\n` +
+          `🎟 ПРОМОКОДЫ:\n\n`;
+
+        for (let i = 0; i < result.products.length; i++) {
+          const product = result.products[i];
+          const promo = result.promos[i];
+
+          message +=
+            `━━━━━━━━━━━━━━\n` +
+            `📦 Product ID: ${product.product_id}\n` +
+            `🎟 Код: ${promo.code}\n`;
+        }
+
+        await ctx.reply(message);
 
       } catch (err) {
-        console.error('AddProductData error:', err);
+        console.error('AddProductData transaction error:', err);
 
         await ctx.reply(
-          '❌ Ошибка при добавлении продуктов в БД.'
+          '❌ Не удалось создать продукты и промокоды.\n' +
+          'Все изменения были отменены.'
         );
       }
 
@@ -539,13 +588,16 @@ bot.command('addproductdata', async (ctx) => {
   adminStates.set(ctx.message.chat.id, 'AddProductData');
 
   await ctx.reply(
-    '📦 Добавление продуктов\n\n' +
+    '📦 Добавление продуктов и промокодов\n\n' +
     'Формат:\n' +
     'ProductData$Количество\n\n' +
     'Пример:\n' +
     'client.ovpn$10\n\n' +
-    'Будет создано 10 продуктов\n' +
-    'с одинаковым ключом, но разными Product ID.'
+    'Будет создано 10 продуктов:\n' +
+    '• у каждого свой Product ID\n' +
+    '• у каждого свой промокод\n' +
+    '• ключ у всех одинаковый\n' +
+    '• каждый промокод используется 1 раз'
   );
 });
 
