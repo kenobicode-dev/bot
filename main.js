@@ -489,20 +489,45 @@ bot.command('addproductdata', async (ctx) => {
   await ctx.reply('Отправьте данные для добавления в формате: ID$ProductData\nНапример: 3$email:password');
 });
 
+// bot.command('showproductdata', async (ctx) => {
+//   try {
+//     if (ctx.message.chat.id !== conf.adminChatId) {
+//       return;
+//     }
+//     const rows = await knex('my_products').select();
+//     if (rows.length === 0) {
+//       await ctx.reply('Нет данных о продуктах.');
+//       return;
+//     }
+
+//     await ctx.reply(JSON.stringify(rows, null, 2));
+//   } catch (err) {
+//     console.error('showproductdata error', err);
+//     await ctx.reply('Произошла ошибка.');
+//   }
+// });
+
 bot.command('showproductdata', async (ctx) => {
   try {
     if (ctx.message.chat.id !== conf.adminChatId) {
       return;
     }
-    const rows = await knex('my_products').select();
+
+    const rows = await knex('my_products')
+      .select('id', 'product_id');
+
     if (rows.length === 0) {
       await ctx.reply('Нет данных о продуктах.');
       return;
     }
 
-    await ctx.reply(JSON.stringify(rows, null, 2));
+    await ctx.reply(
+      `📦 Всего ключей: ${rows.length}\n\n` +
+      rows.map(row => `ID: ${row.id} | Product ID: ${row.product_id}`).join('\n')
+    );
+
   } catch (err) {
-    console.error('showproductdata error', err);
+    console.error('showproductdata error:', err);
     await ctx.reply('Произошла ошибка.');
   }
 });
