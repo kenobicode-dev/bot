@@ -648,6 +648,50 @@ bot.command('showpromos', async (ctx) => {
   }
 });
 
+bot.command('showactivepromos', async (ctx) => {
+  if (ctx.message.chat.id !== conf.adminChatId) {
+    return;
+  }
+
+  try {
+    const promos = await knex('promo_codes')
+      .where('is_active', true)
+      .whereRaw('used_count < max_uses')
+      .where(function () {
+        this.whereNull('expires_at')
+          .orWhere('expires_at', '>', knex.fn.now());
+      })
+      .orderBy('id', 'desc');
+
+    if (promos.length === 0) {
+      await ctx.reply(
+        '🎟 Активных промокодов нет.'
+      );
+      return;
+    }
+
+    let message = '🎟 АКТИВНЫЕ ПРОМОКОДЫ\n\n';
+
+    for (const promo of promos) {
+      message +=
+        `━━━━━━━━━━━━━━\n` +
+        `🎟 ${promo.code}\n` +
+        `📦 Product ID: ${promo.product_id}\n` +
+        `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
+        `⏰ Истекает: ${promo.expires_at || 'нет'}\n`;
+    }
+
+    await ctx.reply(message);
+
+  } catch (err) {
+    console.error('showpromos error:', err);
+
+    await ctx.reply(
+      '❌ Ошибка при получении активных промокодов.'
+    );
+  }
+});
+
 bot.command('delpromo', async (ctx) => {
   if (ctx.message.chat.id !== conf.adminChatId) {
     return;
