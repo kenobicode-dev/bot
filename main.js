@@ -507,23 +507,63 @@ bot.command('addproductdata', async (ctx) => {
 //   }
 // });
 
+// bot.command('showproductdata', async (ctx) => {
+//   try {
+//     if (ctx.message.chat.id !== conf.adminChatId) {
+//       return;
+//     }
+
+//     const rows = await knex('my_products')
+//       .select('id', 'product_id');
+
+//     if (rows.length === 0) {
+//       await ctx.reply('Нет данных о продуктах.');
+//       return;
+//     }
+
+//     await ctx.reply(
+//       `📦 Всего ключей: ${rows.length}\n\n` +
+//       rows.map(row => `ID: ${row.id} | Product ID: ${row.product_id}`).join('\n')
+//     );
+
+//   } catch (err) {
+//     console.error('showproductdata error:', err);
+//     await ctx.reply('Произошла ошибка.');
+//   }
+// });
+
 bot.command('showproductdata', async (ctx) => {
   try {
     if (ctx.message.chat.id !== conf.adminChatId) {
       return;
     }
 
-    const rows = await knex('my_products')
-      .select('id', 'product_id');
+    const rows = await knex('my_products').select();
 
     if (rows.length === 0) {
       await ctx.reply('Нет данных о продуктах.');
       return;
     }
 
-    await ctx.reply(
-      `📦 Всего ключей: ${rows.length}\n\n` +
-      rows.map(row => `ID: ${row.id} | Product ID: ${row.product_id}`).join('\n')
+    const content = rows
+      .map(row =>
+        `ID: ${row.id}\n` +
+        `Product ID: ${row.product_id}\n` +
+        `Product Data:\n${row.product_data}\n` +
+        `${'='.repeat(50)}\n`
+      )
+      .join('\n');
+
+    const buffer = Buffer.from(content, 'utf8');
+
+    await ctx.replyWithDocument(
+      {
+        source: buffer,
+        filename: 'product_data.txt',
+      },
+      {
+        caption: `📦 Всего ключей: ${rows.length}`,
+      }
     );
 
   } catch (err) {
