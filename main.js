@@ -214,7 +214,19 @@ bot.command('promo', async (ctx) => {
       {
         caption:
           `🎟 Код активирован!\n\n` +
-          `📄 Ваш файл: key_${result.productId}.ovpn`,
+          `📄 Ваш файл: key_${result.productId}.ovpn\n\n` +
+          `Установка OpenVPN Connect и загрузка .ovpn‑файла\n` +
+          `1. Установите приложение OpenVPN Connect из App Store или Google Play.\n` +
+          `2. Импортируйте конфигурационный файл key_${result.productId}.ovpn в приложение OpenVPN Connect.\n` +
+          `3. Подтвердите импорт и разреши доступ.\n` +
+          `4. В приложении нажми «Connect».\n\n` +
+
+          `Установка OpenVPN Connect и загрузка .ovpn‑файла на ПК` +
+          `1. Скачайте OpenVPN Community Edition или OpenVPN Connect с официального сайта.` +
+          `2. Запустите установщик и следуйте инструкциям` +
+          `3. Импортируйте конфигурационный файл key_${result.productId}.ovpn в приложение OpenVPN Community Edition или OpenVPN Connect.\n` +
+          `4. Подтвердите импорт и разреши доступ.\n` +
+          `5. В приложении нажми «Connect».\n\n`
       }
     );
 
