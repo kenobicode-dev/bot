@@ -10,6 +10,4 @@ export const conf = {
         }
     },
     adminChatId: 1187963850,
-    xPub: "xpub6FBEgyfiZ79TbeZdgo39Ahr4pRQaoqJMAs7mQNV8MLPaHB19PX7PMhPP12Hjp32jduEA2rQ93DNYgtzm92ZAUizKdUAGWnYdxWCmJwNCtpK",
-    cmc: "b0bee008eb8949d494c939a3d6869150",
 };
