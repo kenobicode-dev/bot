@@ -191,7 +191,7 @@ bot.command('promo', async (ctx) => {
 
     if (args.length < 2) {
       await ctx.reply(
-        '🎁 Использование:\n\n' +
+        '🎟 Использование:\n\n' +
         '/promo ПРОМОКОД'
       );
       return;
@@ -219,8 +219,8 @@ bot.command('promo', async (ctx) => {
       },
       {
         caption:
-          `🎁 Промокод активирован!\n\n` +
-          `📦 Ваш файл: key_${result.productId}.ovpn`,
+          `🎟 Промокод активирован!\n\n` +
+          `📄 Ваш файл: key_${result.productId}.ovpn`,
       }
     );
 
@@ -272,8 +272,8 @@ bot.on('text', async (ctx, next) => {
         },
         {
           caption:
-            `🎁 Промокод активирован!\n\n` +
-            `📦 Ваш файл: key_${result.productId}.ovpn`,
+            `🎟 Промокод активирован!\n\n` +
+            `📄 Ваш файл: key_${result.productId}.ovpn`,
         }
       );
 
@@ -449,7 +449,7 @@ async function handleAdminText(ctx) {
 
           message +=
             `━━━━━━━━━━━━━━\n` +
-            `📦 Product ID: ${product.product_id}\n` +
+            `📄 Product ID: ${product.product_id}\n` +
             `🎟 Код: ${promo.code}\n`;
         }
 
@@ -557,7 +557,7 @@ async function handleAdminText(ctx) {
         await ctx.reply(
           `✅ Промокод создан!\n\n` +
           `🎟 Код: ${code}\n` +
-          `📦 Product ID: ${productId}\n` +
+          `📄 Product ID: ${productId}\n` +
           `🔢 Активаций: ${maxUses}\n` +
           `⏰ До: ${expiresAt || 'без ограничения'}`
         );
@@ -601,7 +601,7 @@ bot.command('addproductdata', async (ctx) => {
   adminStates.set(ctx.message.chat.id, 'AddProductData');
 
   await ctx.reply(
-    '📦 Добавление продуктов и промокодов\n\n' +
+    '📄 Добавление продуктов и промокодов\n\n' +
     'Формат:\n' +
     'ProductData$Количество\n\n' +
     'Пример:\n' +
@@ -647,7 +647,7 @@ bot.command('addproductdata', async (ctx) => {
 //     }
 
 //     await ctx.reply(
-//       `📦 Всего ключей: ${rows.length}\n\n` +
+//       `📄 Всего ключей: ${rows.length}\n\n` +
 //       rows.map(row => `ID: ${row.id} | Product ID: ${row.product_id}`).join('\n')
 //     );
 
@@ -687,7 +687,7 @@ bot.command('showproductdata', async (ctx) => {
         filename: 'product_data.txt',
       },
       {
-        caption: `📦 Всего ключей: ${rows.length}`,
+        caption: `📄 Всего ключей: ${rows.length}`,
       }
     );
 
@@ -756,7 +756,7 @@ bot.command('showpromos', async (ctx) => {
       message +=
         `━━━━━━━━━━━━━━\n` +
         `🎟 ${promo.code}\n` +
-        `📦 Product ID: ${promo.product_id}\n` +
+        `📄 Product ID: ${promo.product_id}\n` +
         `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
         `⏰ Истекает: ${promo.expires_at || 'нет'}\n` +
         `📌 Статус: ${promo.is_active ? 'Активен' : 'Неактивен'}\n`;
@@ -801,7 +801,7 @@ bot.command('showactivepromos', async (ctx) => {
       message +=
         `━━━━━━━━━━━━━━\n` +
         `🎟 ${promo.code}\n` +
-        `📦 Product ID: ${promo.product_id}\n` +
+        `📄 Product ID: ${promo.product_id}\n` +
         `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
         `⏰ Истекает: ${promo.expires_at || 'нет'}\n`;
     }
@@ -883,7 +883,7 @@ bot.command('adminp13qh7', async (ctx) => {
     Markup.inlineKeyboard([
       [
         Markup.button.callback('➕ Добавить товар', 'admin_addproduct'),
-        Markup.button.callback('📦 Добавить ключи', 'admin_addproductdata'),
+        Markup.button.callback('📄 Добавить ключи', 'admin_addproductdata'),
       ],
       [
         Markup.button.callback('🎟 Добавить промокод', 'admin_addpromo'),
@@ -891,7 +891,7 @@ bot.command('adminp13qh7', async (ctx) => {
       ],
       [
         Markup.button.callback('📋 Активные промокоды', 'admin_showactivepromos'),
-        Markup.button.callback('📦 Ключи', 'admin_showproductdata'),
+        Markup.button.callback('📄 Ключи', 'admin_showproductdata'),
       ],
       [
         Markup.button.callback('🗑 Удалить ключ', 'admin_delproductdata'),
@@ -929,7 +929,7 @@ bot.action('admin_addproductdata', async (ctx) => {
   adminStates.set(ctx.chat.id, 'AddProductData');
 
   await ctx.reply(
-    '📦 Добавление продуктов и промокодов\n\n' +
+    '📄 Добавление продуктов и промокодов\n\n' +
     'Формат:\n' +
     'ProductData$Количество\n\n' +
     'Например:\n' +
@@ -982,7 +982,7 @@ bot.action('admin_showpromos', async (ctx) => {
       message +=
         `━━━━━━━━━━━━━━\n` +
         `🎟 ${promo.code}\n` +
-        `📦 Product ID: ${promo.product_id}\n` +
+        `📄 Product ID: ${promo.product_id}\n` +
         `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
         `⏰ Истекает: ${promo.expires_at || 'нет'}\n` +
         `📌 Статус: ${promo.is_active ? 'Активен' : 'Неактивен'}\n`;
@@ -1026,7 +1026,7 @@ bot.action('admin_showactivepromos', async (ctx) => {
       message +=
         `━━━━━━━━━━━━━━\n` +
         `🎟 ${promo.code}\n` +
-        `📦 Product ID: ${promo.product_id}\n` +
+        `📄 Product ID: ${promo.product_id}\n` +
         `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
         `⏰ Истекает: ${promo.expires_at || 'нет'}\n`;
     }
@@ -1071,7 +1071,7 @@ bot.action('admin_showproductdata', async (ctx) => {
         filename: 'product_data.txt',
       },
       {
-        caption: `📦 Всего ключей: ${rows.length}`,
+        caption: `📄 Всего ключей: ${rows.length}`,
       }
     );
 
