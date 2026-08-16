@@ -219,7 +219,7 @@ bot.command('promo', async (ctx) => {
     );
 
     await ctx.reply(
-      `🛠 Подробная инструкция по установке:\n\n` +
+      `🛠 Инструкция по установке:\n\n` +
       `📱 iOS / Android:\n` +
       `1. Установите приложение OpenVPN Connect из App Store или Google Play.\n` +
       `2. Откройте полученный файл → выберите OpenVPN Connect → подтвердите импорт.\n` +
@@ -287,7 +287,7 @@ bot.on('text', async (ctx, next) => {
       );
 
       await ctx.reply(
-        `🛠 Подробная инструкция по установке:\n\n` +
+        `🛠 Инструкция по установке:\n\n` +
         `📱 iOS / Android:\n` +
         `1. Установите приложение OpenVPN Connect из App Store или Google Play.\n` +
         `2. Откройте полученный файл → выберите OpenVPN Connect → подтвердите импорт.\n` +
