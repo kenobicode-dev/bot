@@ -876,20 +876,19 @@ bot.command('adminp13qh7', async (ctx) => {
     '🛠 Админ-панель',
     Markup.inlineKeyboard([
       [
-        Markup.button.callback('➕ Добавить товар', 'admin_addproduct'),
-        Markup.button.callback('📄 Добавить ключи', 'admin_addproductdata'),
+        Markup.button.callback('📄 Добавить файлы списком', 'admin_addproductdata'),
       ],
       [
-        Markup.button.callback('🎟 Добавить промокод', 'admin_addpromo'),
-        Markup.button.callback('📋 Промокоды', 'admin_showpromos'),
+        Markup.button.callback('🎟 Добавить код', 'admin_addpromo'),
+        Markup.button.callback('🗑 Удалить код', 'admin_delpromo'),
       ],
       [
-        Markup.button.callback('📋 Активные промокоды', 'admin_showactivepromos'),
+        Markup.button.callback('📋 Список кодов', 'admin_showpromos'),
+        Markup.button.callback('📋 Активные коды', 'admin_showactivepromos'),
+      ],
+      [
         Markup.button.callback('📄 Ключи', 'admin_showproductdata'),
-      ],
-      [
         Markup.button.callback('🗑 Удалить ключ', 'admin_delproductdata'),
-        Markup.button.callback('🗑 Удалить промокод', 'admin_delpromo'),
       ],
       [
         Markup.button.callback('❌ Отмена', 'admin_cancel'),
