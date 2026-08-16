@@ -214,21 +214,24 @@ bot.command('promo', async (ctx) => {
       {
         caption:
           `🎟 Код активирован!\n\n` +
-          `📄 Ваш файл: key_${result.productId}.ovpn\n\n` +
-          `Установка OpenVPN Connect и загрузка .ovpn‑файла\n` +
-          `1. Установите приложение OpenVPN Connect из App Store или Google Play.\n` +
-          `2. Импортируйте конфигурационный файл key_${result.productId}.ovpn в приложение OpenVPN Connect.\n` +
-          `3. Подтвердите импорт и разреши доступ.\n` +
-          `4. В приложении нажми «Connect».\n\n` +
-
-          `Установка OpenVPN Connect и загрузка .ovpn‑файла на ПК` +
-          `1. Скачайте OpenVPN Community Edition или OpenVPN Connect с официального сайта.` +
-          `2. Запустите установщик и следуйте инструкциям` +
-          `3. Импортируйте конфигурационный файл key_${result.productId}.ovpn в приложение OpenVPN Community Edition или OpenVPN Connect.\n` +
-          `4. Подтвердите импорт и разреши доступ.\n` +
-          `5. В приложении нажми «Connect».\n\n`
+          `📄 Ваш файл: key_${result.productId}.ovpn\n\n`
       }
     );
+
+    await ctx.reply(
+    `🛠 Подробная инструкция по установке:\n\n` +
+    `📱 iOS / Android:\n` +
+    `1. Установите приложение OpenVPN Connect из App Store или Google Play.\n` +
+    `2. Откройте полученный файл → выберите OpenVPN Connect → подтвердите импорт.\n` +
+    `3. В приложении нажмите Connect.\n\n` +
+    `💻 ПК (Windows / macOS / Linux):\n` +
+    `1. Скачайте и установите OpenVPN Client (или Tunnelblick для macOS).\n` +
+    `2. Импортируйте файл key_${result.productId}.ovpn в клиент.\n` +
+    `3. Нажмите Connect.\n\n` +
+    `⚠️ CITIZENSVPN предоставляет файлы конфигурации в технических целях.\n` +
+    `Сервис не несёт ответственности за их использование и возможные последствия.\n` +
+    `Пользователь самостоятельно отвечает за соблюдение законодательства страны использования.`
+  );
 
   } catch (err) {
     console.error('promo error:', err);
