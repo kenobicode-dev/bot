@@ -35,7 +35,7 @@ bot.start(async (ctx) => {
       `🌐 CITIZENSVPN\n\n` +
       `Добро пожаловать, ${name}!\n` +
       `Рад приветствовать в CITIZENSVPN.\n\n` +
-      `CitizensVpnBot — бот выдачи файлов конфигурации OpenVPN по коду.\n\n` +
+      `CitizensVpnBot — бот выдачи файлов конфигурации OpenVPN по коду конфигурации.\n\n` +
       `⚠️ Предупреждение\n\n` +
       `CITIZENSVPN предоставляет файлы конфигурации исключительно в технических целях.\n\n` +
       `Сервис не несёт ответственности за использование предоставленных файлов конфигурации, а также за любые последствия, возникшие в результате их применения.\n` +
@@ -67,14 +67,14 @@ bot.action('promo', async (ctx) => {
     adminStates.set(chatId, 'EnterPromo');
 
     await ctx.reply(
-      '🎟 Введите промокод:'
+      '🎟 Введите код:'
     );
 
   } catch (err) {
     console.error('enter_promo error:', err);
 
     await ctx.reply(
-      '❌ Не удалось открыть ввод промокода.'
+      '❌ Не удалось открыть ввод кода.'
     );
   }
 });
@@ -110,7 +110,7 @@ async function getKeyByPromoCode(code) {
     .toUpperCase();
 
   if (!normalizedCode) {
-    throw new Error('Промокод не указан!');
+    throw new Error('Код не указан!');
   }
 
   return await knex.transaction(async (trx) => {
@@ -130,7 +130,7 @@ async function getKeyByPromoCode(code) {
 
     if (!promo) {
       throw new Error(
-        'Промокод недействителен!'
+        'Код недействителен!'
       );
     }
 
@@ -143,7 +143,7 @@ async function getKeyByPromoCode(code) {
 
     if (!item) {
       throw new Error(
-        'Для этого промокода закончились ключи'
+        'Для этого кода закончились конфигурации'
       );
     }
 
@@ -156,7 +156,7 @@ async function getKeyByPromoCode(code) {
 
     if (!deleted) {
       throw new Error(
-        'Не удалось забрать ключ. Попробуйте ещё раз.'
+        'Не удалось забрать конфигурацию. Попробуйте ещё раз.'
       );
     }
 
@@ -186,7 +186,7 @@ bot.command('promo', async (ctx) => {
     if (args.length < 2) {
       await ctx.reply(
         '🎟 Использование:\n\n' +
-        '/promo ПРОМОКОД'
+        '/promo КОД'
       );
       return;
     }
@@ -213,7 +213,7 @@ bot.command('promo', async (ctx) => {
       },
       {
         caption:
-          `🎟 Промокод активирован!\n\n` +
+          `🎟 Код активирован!\n\n` +
           `📄 Ваш файл: key_${result.productId}.ovpn`,
       }
     );
@@ -237,14 +237,14 @@ bot.on('text', async (ctx, next) => {
   const chatId = message.chat.id;
   const text = message.text;
 
-  // Промокод доступен ВСЕМ пользователям
+  // код доступен ВСЕМ пользователям
   if (adminStates.get(chatId) === 'EnterPromo') {
     adminStates.set(chatId, 'Sleep');
 
     const code = text.trim().toUpperCase();
 
     if (!code) {
-      await ctx.reply('❌ Промокод не может быть пустым.');
+      await ctx.reply('❌ Код не может быть пустым.');
       return;
     }
 
@@ -266,7 +266,7 @@ bot.on('text', async (ctx, next) => {
         },
         {
           caption:
-            `🎟 Промокод активирован!\n\n` +
+            `🎟 Код активирован!\n\n` +
             `📄 Ваш файл: key_${result.productId}.ovpn`,
         }
       );
@@ -387,7 +387,7 @@ async function handleAdminText(ctx) {
           for (let i = 0; i < count; i++) {
             nextProductId++;
 
-            // Генерируем уникальный промокод
+            // Генерируем уникальный код
             let promoCode;
             let exists = true;
 
@@ -423,7 +423,7 @@ async function handleAdminText(ctx) {
           // Сначала создаём продукты
           await trx('my_products').insert(products);
 
-          // Затем промокоды
+          // Затем коды
           await trx('promo_codes').insert(promos);
 
           return {
@@ -434,8 +434,8 @@ async function handleAdminText(ctx) {
 
         let message =
           `✅ Успешно создано: ${result.products.length} продуктов\n\n` +
-          `🔑 Общий ключ:\n${productData}\n\n` +
-          `🎟 ПРОМОКОДЫ:\n\n`;
+          `🔑 Общая конфигурация:\n${productData}\n\n` +
+          `🎟 КОДЫ:\n\n`;
 
         for (let i = 0; i < result.products.length; i++) {
           const product = result.products[i];
@@ -453,7 +453,7 @@ async function handleAdminText(ctx) {
         console.error('AddProductData transaction error:', err);
 
         await ctx.reply(
-          '❌ Не удалось создать продукты и промокоды.\n' +
+          '❌ Не удалось создать продукты и коды.\n' +
           'Все изменения были отменены.'
         );
       }
@@ -501,7 +501,7 @@ async function handleAdminText(ctx) {
       const expiresAt = parts[3] || null;
 
       if (!code) {
-        await ctx.reply('❌ Промокод не может быть пустым.');
+        await ctx.reply('❌ код не может быть пустым.');
         return;
       }
 
@@ -521,7 +521,7 @@ async function handleAdminText(ctx) {
 
         if (!product) {
           await ctx.reply(
-            `❌ Для product_id ${productId} нет доступных ключей в my_products.`
+            `❌ Для product_id ${productId} нет доступных конфигураций в my_products.`
           );
           return;
         }
@@ -533,7 +533,7 @@ async function handleAdminText(ctx) {
 
         if (existingPromo) {
           await ctx.reply(
-            '❌ Такой промокод уже существует.'
+            '❌ Такой код уже существует.'
           );
           return;
         }
@@ -549,7 +549,7 @@ async function handleAdminText(ctx) {
 
 
         await ctx.reply(
-          `✅ Промокод создан!\n\n` +
+          `✅ Код создан!\n\n` +
           `🎟 Код: ${code}\n` +
           `📄 Product ID: ${productId}\n` +
           `🔢 Активаций: ${maxUses}\n` +
@@ -560,7 +560,7 @@ async function handleAdminText(ctx) {
         console.error('AddPromo error:', err);
 
         await ctx.reply(
-          '❌ Ошибка при создании промокода.'
+          '❌ Ошибка при создании кода.'
         );
       }
 
@@ -595,16 +595,16 @@ bot.command('addproductdata', async (ctx) => {
   adminStates.set(ctx.message.chat.id, 'AddProductData');
 
   await ctx.reply(
-    '📄 Добавление продуктов и промокодов\n\n' +
+    '📄 Добавление продуктов и кодов\n\n' +
     'Формат:\n' +
     'ProductData$Количество\n\n' +
     'Пример:\n' +
     'client.ovpn$10\n\n' +
     'Будет создано 10 продуктов:\n' +
     '• у каждого свой Product ID\n' +
-    '• у каждого свой промокод\n' +
-    '• ключ у всех одинаковый\n' +
-    '• каждый промокод используется 1 раз'
+    '• у каждого свой код\n' +
+    '• конфигурация у всех одинаковая\n' +
+    '• каждый код используется 1 раз'
   );
 });
 
@@ -681,7 +681,7 @@ bot.command('showproductdata', async (ctx) => {
         filename: 'product_data.txt',
       },
       {
-        caption: `📄 Всего ключей: ${rows.length}`,
+        caption: `📄 Всего конфигураций: ${rows.length}`,
       }
     );
 
@@ -718,7 +718,7 @@ bot.command('addpromo', async (ctx) => {
   adminStates.set(chatId, 'AddPromo');
 
   await ctx.reply(
-    '🎟 Создание промокода\n\n' +
+    '🎟 Создание кода\n\n' +
     'Отправьте:\n\n' +
     'CODE$PRODUCT_ID$MAX_USES$EXPIRES_AT\n\n' +
     'Например:\n' +
@@ -739,12 +739,12 @@ bot.command('showpromos', async (ctx) => {
 
     if (promos.length === 0) {
       await ctx.reply(
-        '🎟 Промокодов пока нет.'
+        '🎟 Кодов пока нет.'
       );
       return;
     }
 
-    let message = '🎟 ПРОМОКОДЫ\n\n';
+    let message = '🎟 КОДЫ\n\n';
 
     for (const promo of promos) {
       message +=
@@ -762,7 +762,7 @@ bot.command('showpromos', async (ctx) => {
     console.error('showpromos error:', err);
 
     await ctx.reply(
-      '❌ Ошибка при получении промокодов.'
+      '❌ Ошибка при получении кодов.'
     );
   }
 });
@@ -784,12 +784,12 @@ bot.command('showactivepromos', async (ctx) => {
 
     if (promos.length === 0) {
       await ctx.reply(
-        '🎟 Активных промокодов нет.'
+        '🎟 Активных кодов нет.'
       );
       return;
     }
 
-    let message = '🎟 АКТИВНЫЕ ПРОМОКОДЫ\n\n';
+    let message = '🎟 АКТИВНЫЕ КОДЫ\n\n';
 
     for (const promo of promos) {
       message +=
@@ -806,7 +806,7 @@ bot.command('showactivepromos', async (ctx) => {
     console.error('showpromos error:', err);
 
     await ctx.reply(
-      '❌ Ошибка при получении активных промокодов.'
+      '❌ Ошибка при получении активных кодов.'
     );
   }
 });
@@ -842,20 +842,20 @@ bot.command('delpromo', async (ctx) => {
 
     if (deleted === 0) {
       await ctx.reply(
-        '❌ Промокод не найден.'
+        '❌ код не найден.'
       );
       return;
     }
 
     await ctx.reply(
-      `✅ Промокод ${code} удалён.`
+      `✅ Код ${code} удалён.`
     );
 
   } catch (err) {
     console.error('delpromo error:', err);
 
     await ctx.reply(
-      '❌ Ошибка при удалении промокода.'
+      '❌ Ошибка при удалении кода.'
     );
   }
 });
@@ -876,7 +876,7 @@ bot.command('adminp13qh7', async (ctx) => {
     '🛠 Админ-панель',
     Markup.inlineKeyboard([
       [
-        Markup.button.callback('📄 Добавить файлы списком', 'admin_addproductdata'),
+        Markup.button.callback('📄 Добавить коды списком', 'admin_addproductdata'),
       ],
       [
         Markup.button.callback('🎟 Добавить код', 'admin_addpromo'),
@@ -887,8 +887,10 @@ bot.command('adminp13qh7', async (ctx) => {
         Markup.button.callback('📋 Активные коды', 'admin_showactivepromos'),
       ],
       [
-        Markup.button.callback('📄 Ключи', 'admin_showproductdata'),
-        Markup.button.callback('🗑 Удалить ключ', 'admin_delproductdata'),
+        Markup.button.callback('📄 Конфигурации', 'admin_showproductdata'),
+      ],
+      [
+        Markup.button.callback('🗑 Удалить Конфигурацию', 'admin_delproductdata'),
       ],
       [
         Markup.button.callback('❌ Отмена', 'admin_cancel'),
@@ -922,7 +924,7 @@ bot.action('admin_addproductdata', async (ctx) => {
   adminStates.set(ctx.chat.id, 'AddProductData');
 
   await ctx.reply(
-    '📄 Добавление продуктов и промокодов\n\n' +
+    '📄 Добавление продуктов и кодов\n\n' +
     'Формат:\n' +
     'ProductData$Количество\n\n' +
     'Например:\n' +
@@ -942,7 +944,7 @@ bot.action('admin_addpromo', async (ctx) => {
   adminStates.set(ctx.chat.id, 'AddPromo');
 
   await ctx.reply(
-    '🎟 Создание промокода\n\n' +
+    '🎟 Создание кода\n\n' +
     'Формат:\n' +
     'CODE$PRODUCT_ID$MAX_USES$EXPIRES_AT\n\n' +
     'Например:\n' +
@@ -965,11 +967,11 @@ bot.action('admin_showpromos', async (ctx) => {
       .orderBy('id', 'desc');
 
     if (promos.length === 0) {
-      await ctx.reply('🎟 Промокодов пока нет.');
+      await ctx.reply('🎟 Кодов пока нет.');
       return;
     }
 
-    let message = '🎟 ПРОМОКОДЫ\n\n';
+    let message = '🎟 КОДЫ\n\n';
 
     for (const promo of promos) {
       message +=
@@ -985,7 +987,7 @@ bot.action('admin_showpromos', async (ctx) => {
 
   } catch (err) {
     console.error(err);
-    await ctx.reply('❌ Ошибка при получении промокодов.');
+    await ctx.reply('❌ Ошибка при получении кодов.');
   }
 });
 
@@ -1009,11 +1011,11 @@ bot.action('admin_showactivepromos', async (ctx) => {
       .orderBy('id', 'desc');
 
     if (promos.length === 0) {
-      await ctx.reply('🎟 Активных промокодов нет.');
+      await ctx.reply('🎟 Активных кодов нет.');
       return;
     }
 
-    let message = '🎟 АКТИВНЫЕ ПРОМОКОДЫ\n\n';
+    let message = '🎟 АКТИВНЫЕ КОДЫ\n\n';
 
     for (const promo of promos) {
       message +=
@@ -1028,7 +1030,7 @@ bot.action('admin_showactivepromos', async (ctx) => {
 
   } catch (err) {
     console.error(err);
-    await ctx.reply('❌ Ошибка при получении активных промокодов.');
+    await ctx.reply('❌ Ошибка при получении активных кодов.');
   }
 });
 
@@ -1064,7 +1066,7 @@ bot.action('admin_showproductdata', async (ctx) => {
         filename: 'product_data.txt',
       },
       {
-        caption: `📄 Всего ключей: ${rows.length}`,
+        caption: `📄 Всего конфигураций: ${rows.length}`,
       }
     );
 
@@ -1101,7 +1103,7 @@ bot.action('admin_delpromo', async (ctx) => {
   await ctx.answerCbQuery();
 
   await ctx.reply(
-    '🗑 Для удаления промокода используйте:\n\n' +
+    '🗑 Для удаления кода используйте:\n\n' +
     '/delpromo CODE'
   );
 });
