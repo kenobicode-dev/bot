@@ -286,6 +286,21 @@ bot.on('text', async (ctx, next) => {
         }
       );
 
+      await ctx.reply(
+        `🛠 Подробная инструкция по установке:\n\n` +
+        `📱 iOS / Android:\n` +
+        `1. Установите приложение OpenVPN Connect из App Store или Google Play.\n` +
+        `2. Откройте полученный файл → выберите OpenVPN Connect → подтвердите импорт.\n` +
+        `3. В приложении нажмите Connect.\n\n` +
+        `💻 ПК (Windows / macOS / Linux):\n` +
+        `1. Скачайте и установите OpenVPN Client (или Tunnelblick для macOS).\n` +
+        `2. Импортируйте файл key_${result.productId}.ovpn в клиент.\n` +
+        `3. Нажмите Connect.\n\n` +
+        `⚠️ CITIZENSVPN предоставляет файлы конфигурации в технических целях.\n` +
+        `Сервис не несёт ответственности за их использование и возможные последствия.\n` +
+        `Пользователь самостоятельно отвечает за соблюдение законодательства страны использования.`
+      );
+
     } catch (err) {
       console.error('Promo error:', err);
       await ctx.reply(`❌ ${err.message}`);
