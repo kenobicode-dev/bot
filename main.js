@@ -34,10 +34,16 @@ bot.start(async (ctx) => {
     await ctx.reply(
       `🌐 CITIZENSVPN\n\n` +
       `Добро пожаловать, ${name}!\n` +
-      `Рады приветствовать в CITIZENSVPN.\n\n` +
-      `Бот выдачи файлов конфигурации OpenVPN по промокоду.\n\n`,
+      `Рад приветствовать в CITIZENSVPN.\n\n` +
+      `CitizensVpnBot — бот выдачи файлов конфигурации OpenVPN по коду конфигурации.\n\n` +
+      `⚠️ Предупреждение\n\n` +
+      `CITIZENSVPN предоставляет файлы конфигурации исключительно в технических целях.\n\n` +
+      `Сервис не несёт ответственности за использование предоставленных файлов конфигурации, а также за любые последствия, возникшие в результате их применения.\n` +
+      `Пользователь самостоятельно несёт полную ответственность за соблюдение законодательства страны, на территории которой используются файлы конфигурации и сервис в целом.\n` +
+      `Использование файлов конфигурации должно осуществляться строго в соответствии с действующими правовыми нормами государства пребывания.\n\n` +
+      `Перед использованием сервиса рекомендуем ознакомиться с законодательными актами, регулирующими применение технологий туннелирования и шифрования трафика в вашей юрисдикции.`,
       Markup.inlineKeyboard([
-        Markup.button.callback('Ввести промокод', 'promo'),
+        Markup.button.callback('Ввести код конфигурации', 'promo'),
       ]),
     );
   } catch (e) {
@@ -45,9 +51,10 @@ bot.start(async (ctx) => {
   }
 });
 
+
 bot.help(async (ctx) => {
   await ctx.reply(
-    `/promo — Ввести промокод`
+    `/promo — Ввести код конфигурации`
   );
 });
 
@@ -60,14 +67,14 @@ bot.action('promo', async (ctx) => {
     adminStates.set(chatId, 'EnterPromo');
 
     await ctx.reply(
-      '🎁 Введите промокод:'
+      '🎟 Введите код:'
     );
 
   } catch (err) {
     console.error('enter_promo error:', err);
 
     await ctx.reply(
-      '❌ Не удалось открыть ввод промокода.'
+      '❌ Не удалось открыть ввод кода.'
     );
   }
 });
@@ -103,7 +110,7 @@ async function getKeyByPromoCode(code) {
     .toUpperCase();
 
   if (!normalizedCode) {
-    throw new Error('Промокод не указан!');
+    throw new Error('Код не указан!');
   }
 
   return await knex.transaction(async (trx) => {
@@ -123,7 +130,7 @@ async function getKeyByPromoCode(code) {
 
     if (!promo) {
       throw new Error(
-        'Промокод недействителен!'
+        'Код недействителен!'
       );
     }
 
@@ -136,7 +143,7 @@ async function getKeyByPromoCode(code) {
 
     if (!item) {
       throw new Error(
-        'Для этого промокода закончились ключи'
+        'Для этого кода закончились конфигурации'
       );
     }
 
@@ -149,7 +156,7 @@ async function getKeyByPromoCode(code) {
 
     if (!deleted) {
       throw new Error(
-        'Не удалось забрать ключ. Попробуйте ещё раз.'
+        'Не удалось забрать конфигурацию. Попробуйте ещё раз.'
       );
     }
 
@@ -178,8 +185,8 @@ bot.command('promo', async (ctx) => {
 
     if (args.length < 2) {
       await ctx.reply(
-        '🎁 Использование:\n\n' +
-        '/promo ПРОМОКОД'
+        '🎟 Использование:\n\n' +
+        '/promo КОД'
       );
       return;
     }
@@ -206,9 +213,24 @@ bot.command('promo', async (ctx) => {
       },
       {
         caption:
-          `🎁 Промокод активирован!\n\n` +
-          `📦 Ваш файл: key_${result.productId}.ovpn`,
+          `🎟 Код активирован!\n\n` +
+          `📄 Ваш файл: key_${result.productId}.ovpn\n\n`
       }
+    );
+
+    await ctx.reply(
+      `🛠 Инструкция по установке:\n\n` +
+      `📱 iOS / Android:\n` +
+      `1. Установите приложение OpenVPN Connect из App Store или Google Play.\n` +
+      `2. Откройте полученный файл → выберите OpenVPN Connect → подтвердите импорт.\n` +
+      `3. В приложении нажмите Connect.\n\n` +
+      `💻 ПК (Windows / macOS / Linux):\n` +
+      `1. Скачайте и установите OpenVPN Client (или Tunnelblick для macOS).\n` +
+      `2. Импортируйте файл key_${result.productId}.ovpn в клиент.\n` +
+      `3. Нажмите Connect.\n\n` +
+      `⚠️ CITIZENSVPN предоставляет файлы конфигурации в технических целях.\n` +
+      `Сервис не несёт ответственности за их использование и возможные последствия.\n` +
+      `Пользователь самостоятельно отвечает за соблюдение законодательства страны использования.`
     );
 
   } catch (err) {
@@ -230,14 +252,14 @@ bot.on('text', async (ctx, next) => {
   const chatId = message.chat.id;
   const text = message.text;
 
-  // Промокод доступен ВСЕМ пользователям
+  // код доступен ВСЕМ пользователям
   if (adminStates.get(chatId) === 'EnterPromo') {
     adminStates.set(chatId, 'Sleep');
 
     const code = text.trim().toUpperCase();
 
     if (!code) {
-      await ctx.reply('❌ Промокод не может быть пустым.');
+      await ctx.reply('❌ Код не может быть пустым.');
       return;
     }
 
@@ -259,9 +281,24 @@ bot.on('text', async (ctx, next) => {
         },
         {
           caption:
-            `🎁 Промокод активирован!\n\n` +
-            `📦 Ваш файл: key_${result.productId}.ovpn`,
+            `🎟 Код активирован!\n\n` +
+            `📄 Ваш файл: key_${result.productId}.ovpn`,
         }
+      );
+
+      await ctx.reply(
+        `🛠 Инструкция по установке:\n\n` +
+        `📱 iOS / Android:\n` +
+        `1. Установите приложение OpenVPN Connect из App Store или Google Play.\n` +
+        `2. Откройте полученный файл → выберите OpenVPN Connect → подтвердите импорт.\n` +
+        `3. В приложении нажмите Connect.\n\n` +
+        `💻 ПК (Windows / macOS / Linux):\n` +
+        `1. Скачайте и установите OpenVPN Client (или Tunnelblick для macOS).\n` +
+        `2. Импортируйте файл key_${result.productId}.ovpn в клиент.\n` +
+        `3. Нажмите Connect.\n\n` +
+        `⚠️ CITIZENSVPN предоставляет файлы конфигурации в технических целях.\n` +
+        `Сервис не несёт ответственности за их использование и возможные последствия.\n` +
+        `Пользователь самостоятельно отвечает за соблюдение законодательства страны использования.`
       );
 
     } catch (err) {
@@ -349,7 +386,7 @@ async function handleAdminText(ctx) {
         return;
       }
 
-      const productData = parts[0];
+      const productData = parts[0].trim();
       const count = Number(parts[1].trim());
 
       if (!productData) {
@@ -365,40 +402,89 @@ async function handleAdminText(ctx) {
       }
 
       try {
-        await knex.transaction(async (trx) => {
-          // Получаем максимальный существующий product_id
-          const result = await trx('my_products')
+        const result = await knex.transaction(async (trx) => {
+
+          // Получаем максимальный product_id
+          const maxRow = await trx('my_products')
             .max('product_id as maxProductId')
             .first();
 
-          let nextProductId = Number(result.maxProductId) || 0;
+          let nextProductId = Number(maxRow?.maxProductId) || 0;
 
-          const rows = [];
+          const products = [];
+          const promos = [];
 
           for (let i = 0; i < count; i++) {
             nextProductId++;
 
-            rows.push({
+            // Генерируем уникальный код
+            let promoCode;
+            let exists = true;
+
+            while (exists) {
+              promoCode =
+                'CVPN-' +
+                crypto.randomBytes(5)
+                  .toString('hex')
+                  .toUpperCase();
+
+              const existing = await trx('promo_codes')
+                .where({ code: promoCode })
+                .first();
+
+              exists = !!existing;
+            }
+
+            products.push({
               product_id: nextProductId,
               product_data: productData
             });
+
+            promos.push({
+              code: promoCode,
+              product_id: nextProductId,
+              max_uses: 1,
+              used_count: 0,
+              expires_at: null,
+              is_active: true
+            });
           }
 
-          await trx('my_products').insert(rows);
+          // Сначала создаём продукты
+          await trx('my_products').insert(products);
+
+          // Затем коды
+          await trx('promo_codes').insert(promos);
+
+          return {
+            products,
+            promos
+          };
         });
 
-        await ctx.reply(
-          `✅ Продукты успешно добавлены.\n\n` +
-          `🔑 Ключ: ${productData}\n` +
-          `🔢 Количество: ${count}\n\n` +
-          `🆔 Product ID созданы автоматически.`
-        );
+        let message =
+          `✅ Успешно создано: ${result.products.length} продуктов\n\n` +
+          `🔑 Общая конфигурация:\n${productData}\n\n` +
+          `🎟 КОДЫ:\n\n`;
+
+        for (let i = 0; i < result.products.length; i++) {
+          const product = result.products[i];
+          const promo = result.promos[i];
+
+          message +=
+            `━━━━━━━━━━━━━━\n` +
+            `📄 Product ID: ${product.product_id}\n` +
+            `🎟 Код: ${promo.code}\n`;
+        }
+
+        await ctx.reply(message);
 
       } catch (err) {
-        console.error('AddProductData error:', err);
+        console.error('AddProductData transaction error:', err);
 
         await ctx.reply(
-          '❌ Ошибка при добавлении продуктов в БД.'
+          '❌ Не удалось создать продукты и коды.\n' +
+          'Все изменения были отменены.'
         );
       }
 
@@ -445,7 +531,7 @@ async function handleAdminText(ctx) {
       const expiresAt = parts[3] || null;
 
       if (!code) {
-        await ctx.reply('❌ Промокод не может быть пустым.');
+        await ctx.reply('❌ код не может быть пустым.');
         return;
       }
 
@@ -465,7 +551,7 @@ async function handleAdminText(ctx) {
 
         if (!product) {
           await ctx.reply(
-            `❌ Для product_id ${productId} нет доступных ключей в my_products.`
+            `❌ Для product_id ${productId} нет доступных конфигураций в my_products.`
           );
           return;
         }
@@ -477,7 +563,7 @@ async function handleAdminText(ctx) {
 
         if (existingPromo) {
           await ctx.reply(
-            '❌ Такой промокод уже существует.'
+            '❌ Такой код уже существует.'
           );
           return;
         }
@@ -493,9 +579,9 @@ async function handleAdminText(ctx) {
 
 
         await ctx.reply(
-          `✅ Промокод создан!\n\n` +
+          `✅ Код создан!\n\n` +
           `🎟 Код: ${code}\n` +
-          `📦 Product ID: ${productId}\n` +
+          `📄 Product ID: ${productId}\n` +
           `🔢 Активаций: ${maxUses}\n` +
           `⏰ До: ${expiresAt || 'без ограничения'}`
         );
@@ -504,7 +590,7 @@ async function handleAdminText(ctx) {
         console.error('AddPromo error:', err);
 
         await ctx.reply(
-          '❌ Ошибка при создании промокода.'
+          '❌ Ошибка при создании кода.'
         );
       }
 
@@ -539,13 +625,16 @@ bot.command('addproductdata', async (ctx) => {
   adminStates.set(ctx.message.chat.id, 'AddProductData');
 
   await ctx.reply(
-    '📦 Добавление продуктов\n\n' +
+    '📄 Добавление продуктов и кодов\n\n' +
     'Формат:\n' +
     'ProductData$Количество\n\n' +
     'Пример:\n' +
     'client.ovpn$10\n\n' +
-    'Будет создано 10 продуктов\n' +
-    'с одинаковым ключом, но разными Product ID.'
+    'Будет создано 10 продуктов:\n' +
+    '• у каждого свой Product ID\n' +
+    '• у каждого свой код\n' +
+    '• конфигурация у всех одинаковая\n' +
+    '• каждый код используется 1 раз'
   );
 });
 
@@ -582,7 +671,7 @@ bot.command('addproductdata', async (ctx) => {
 //     }
 
 //     await ctx.reply(
-//       `📦 Всего ключей: ${rows.length}\n\n` +
+//       `📄 Всего ключей: ${rows.length}\n\n` +
 //       rows.map(row => `ID: ${row.id} | Product ID: ${row.product_id}`).join('\n')
 //     );
 
@@ -622,7 +711,7 @@ bot.command('showproductdata', async (ctx) => {
         filename: 'product_data.txt',
       },
       {
-        caption: `📦 Всего ключей: ${rows.length}`,
+        caption: `📄 Всего конфигураций: ${rows.length}`,
       }
     );
 
@@ -659,7 +748,7 @@ bot.command('addpromo', async (ctx) => {
   adminStates.set(chatId, 'AddPromo');
 
   await ctx.reply(
-    '🎟 Создание промокода\n\n' +
+    '🎟 Создание кода\n\n' +
     'Отправьте:\n\n' +
     'CODE$PRODUCT_ID$MAX_USES$EXPIRES_AT\n\n' +
     'Например:\n' +
@@ -680,18 +769,18 @@ bot.command('showpromos', async (ctx) => {
 
     if (promos.length === 0) {
       await ctx.reply(
-        '🎟 Промокодов пока нет.'
+        '🎟 Кодов пока нет.'
       );
       return;
     }
 
-    let message = '🎟 ПРОМОКОДЫ\n\n';
+    let message = '🎟 КОДЫ\n\n';
 
     for (const promo of promos) {
       message +=
         `━━━━━━━━━━━━━━\n` +
         `🎟 ${promo.code}\n` +
-        `📦 Product ID: ${promo.product_id}\n` +
+        `📄 Product ID: ${promo.product_id}\n` +
         `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
         `⏰ Истекает: ${promo.expires_at || 'нет'}\n` +
         `📌 Статус: ${promo.is_active ? 'Активен' : 'Неактивен'}\n`;
@@ -703,7 +792,7 @@ bot.command('showpromos', async (ctx) => {
     console.error('showpromos error:', err);
 
     await ctx.reply(
-      '❌ Ошибка при получении промокодов.'
+      '❌ Ошибка при получении кодов.'
     );
   }
 });
@@ -725,18 +814,18 @@ bot.command('showactivepromos', async (ctx) => {
 
     if (promos.length === 0) {
       await ctx.reply(
-        '🎟 Активных промокодов нет.'
+        '🎟 Активных кодов нет.'
       );
       return;
     }
 
-    let message = '🎟 АКТИВНЫЕ ПРОМОКОДЫ\n\n';
+    let message = '🎟 АКТИВНЫЕ КОДЫ\n\n';
 
     for (const promo of promos) {
       message +=
         `━━━━━━━━━━━━━━\n` +
         `🎟 ${promo.code}\n` +
-        `📦 Product ID: ${promo.product_id}\n` +
+        `📄 Product ID: ${promo.product_id}\n` +
         `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
         `⏰ Истекает: ${promo.expires_at || 'нет'}\n`;
     }
@@ -747,7 +836,7 @@ bot.command('showactivepromos', async (ctx) => {
     console.error('showpromos error:', err);
 
     await ctx.reply(
-      '❌ Ошибка при получении активных промокодов.'
+      '❌ Ошибка при получении активных кодов.'
     );
   }
 });
@@ -783,20 +872,20 @@ bot.command('delpromo', async (ctx) => {
 
     if (deleted === 0) {
       await ctx.reply(
-        '❌ Промокод не найден.'
+        '❌ код не найден.'
       );
       return;
     }
 
     await ctx.reply(
-      `✅ Промокод ${code} удалён.`
+      `✅ Код ${code} удалён.`
     );
 
   } catch (err) {
     console.error('delpromo error:', err);
 
     await ctx.reply(
-      '❌ Ошибка при удалении промокода.'
+      '❌ Ошибка при удалении кода.'
     );
   }
 });
@@ -806,6 +895,261 @@ bot.command('echo', async (ctx) => {
     return;
   }
   await ctx.reply(`Ваш chat.id: ${ctx.message.chat.id}`);
+});
+
+bot.command('adminp13qh7', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    return;
+  }
+
+  await ctx.reply(
+    '🛠 Админ-панель',
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback('📄 Добавить коды списком', 'admin_addproductdata'),
+      ],
+      [
+        Markup.button.callback('🎟 Добавить код', 'admin_addpromo'),
+        Markup.button.callback('🗑 Удалить код', 'admin_delpromo'),
+      ],
+      [
+        Markup.button.callback('📋 Список кодов', 'admin_showpromos'),
+        Markup.button.callback('📋 Активные коды', 'admin_showactivepromos'),
+      ],
+      [
+        Markup.button.callback('📄 Конфигурации', 'admin_showproductdata'),
+      ],
+      [
+        Markup.button.callback('🗑 Удалить Конфигурацию', 'admin_delproductdata'),
+      ],
+      [
+        Markup.button.callback('❌ Отмена', 'admin_cancel'),
+      ],
+    ])
+  );
+});
+
+bot.action('admin_addproduct', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  adminStates.set(ctx.chat.id, 'AddProduct_N');
+
+  await ctx.reply('Укажите название товара:');
+});
+
+
+bot.action('admin_addproductdata', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  adminStates.set(ctx.chat.id, 'AddProductData');
+
+  await ctx.reply(
+    '📄 Добавление продуктов и кодов\n\n' +
+    'Формат:\n' +
+    'ProductData$Количество\n\n' +
+    'Например:\n' +
+    'client.ovpn$10'
+  );
+});
+
+
+bot.action('admin_addpromo', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  adminStates.set(ctx.chat.id, 'AddPromo');
+
+  await ctx.reply(
+    '🎟 Создание кода\n\n' +
+    'Формат:\n' +
+    'CODE$PRODUCT_ID$MAX_USES$EXPIRES_AT\n\n' +
+    'Например:\n' +
+    'FREE-12345$3$2026-12-31 23:59:59'
+  );
+});
+
+
+bot.action('admin_showpromos', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  // Можно вызвать ту же логику, что сейчас находится в /showpromos
+  try {
+    const promos = await knex('promo_codes')
+      .orderBy('id', 'desc');
+
+    if (promos.length === 0) {
+      await ctx.reply('🎟 Кодов пока нет.');
+      return;
+    }
+
+    let message = '🎟 КОДЫ\n\n';
+
+    for (const promo of promos) {
+      message +=
+        `━━━━━━━━━━━━━━\n` +
+        `🎟 ${promo.code}\n` +
+        `📄 Product ID: ${promo.product_id}\n` +
+        `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
+        `⏰ Истекает: ${promo.expires_at || 'нет'}\n` +
+        `📌 Статус: ${promo.is_active ? 'Активен' : 'Неактивен'}\n`;
+    }
+
+    await ctx.reply(message);
+
+  } catch (err) {
+    console.error(err);
+    await ctx.reply('❌ Ошибка при получении кодов.');
+  }
+});
+
+
+bot.action('admin_showactivepromos', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  try {
+    const promos = await knex('promo_codes')
+      .where('is_active', true)
+      .whereRaw('used_count < max_uses')
+      .where(function () {
+        this.whereNull('expires_at')
+          .orWhere('expires_at', '>', knex.fn.now());
+      })
+      .orderBy('id', 'desc');
+
+    if (promos.length === 0) {
+      await ctx.reply('🎟 Активных кодов нет.');
+      return;
+    }
+
+    let message = '🎟 АКТИВНЫЕ КОДЫ\n\n';
+
+    for (const promo of promos) {
+      message +=
+        `━━━━━━━━━━━━━━\n` +
+        `🎟 ${promo.code}\n` +
+        `📄 Product ID: ${promo.product_id}\n` +
+        `🔢 Использовано: ${promo.used_count}/${promo.max_uses}\n` +
+        `⏰ Истекает: ${promo.expires_at || 'нет'}\n`;
+    }
+
+    await ctx.reply(message);
+
+  } catch (err) {
+    console.error(err);
+    await ctx.reply('❌ Ошибка при получении активных кодов.');
+  }
+});
+
+
+bot.action('admin_showproductdata', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  try {
+    const rows = await knex('my_products').select();
+
+    if (rows.length === 0) {
+      await ctx.reply('Нет данных о продуктах.');
+      return;
+    }
+
+    const content = rows
+      .map(row =>
+        `ID: ${row.id}\n` +
+        `Product ID: ${row.product_id}\n` +
+        `Product Data:\n${row.product_data}\n` +
+        `${'='.repeat(50)}\n`
+      )
+      .join('\n');
+
+    await ctx.replyWithDocument(
+      {
+        source: Buffer.from(content, 'utf8'),
+        filename: 'product_data.txt',
+      },
+      {
+        caption: `📄 Всего конфигураций: ${rows.length}`,
+      }
+    );
+
+  } catch (err) {
+    console.error(err);
+    await ctx.reply('❌ Ошибка.');
+  }
+});
+
+
+bot.action('admin_delproductdata', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  adminStates.set(ctx.chat.id, 'DelProductData');
+
+  await ctx.reply(
+    '🗑 Отправьте данные для удаления:\n\n' +
+    'ID$ProductData'
+  );
+});
+
+
+bot.action('admin_delpromo', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  await ctx.reply(
+    '🗑 Для удаления кода используйте:\n\n' +
+    '/delpromo CODE'
+  );
+});
+
+
+bot.action('admin_cancel', async (ctx) => {
+  if (ctx.chat.id !== conf.adminChatId) {
+    await ctx.answerCbQuery('⛔ Доступ запрещён');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  adminStates.set(ctx.chat.id, 'Sleep');
+
+  await ctx.reply('❌ Все текущие операции отменены.');
 });
 
 bot.launch().then(() => {
